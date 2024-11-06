@@ -1,5 +1,5 @@
 # University-Software-System (UniView)
-## SWE Project 2
+## SWE Final Project
 
 npm start  
     Starts the development server
