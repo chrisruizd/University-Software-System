@@ -24,8 +24,11 @@ Install Postman to test backend API
 
 
 ### Resources:  
-Front end:    
+Front end (client):    
     https://www.youtube.com/watch?v=cBI5wJNmaCE  
 
-Back end:    
+Back end (server):    
     https://www.youtube.com/watch?v=WKfwyEDjEgM  
+
+Connect Node.js to PostgreSQL:  
+    https://www.youtube.com/watch?v=_n-Ai30C1qs  
