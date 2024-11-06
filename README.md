@@ -1,4 +1,4 @@
-# University-Software-System
+# University-Software-System (UniView)
 ## SWE Project 2
 
 npm start  
@@ -24,8 +24,8 @@ Install Postman to test backend API
 
 
 ### Resources:  
-Front end  
+Front end:    
     https://www.youtube.com/watch?v=cBI5wJNmaCE  
 
-Back end  
+Back end:    
     https://www.youtube.com/watch?v=WKfwyEDjEgM  
