@@ -1,16 +1,16 @@
 # University-Software-System
-##SWE Project 2
+## SWE Project 2
 
 npm start  
     Starts the development server
 
 
-###Technology Stack:  
+### Technology Stack:  
     React - front end  
     Node.js + Express - backend  
     PostgreSQL - database  
 
-###Notes:  
+### Notes:  
 client folder contains front end (React)  
     npx create-react-app .  
 
@@ -23,7 +23,7 @@ Install Postman to test backend API
 
 
 
-###Resources:  
+### Resources:  
 Front end  
     https://www.youtube.com/watch?v=cBI5wJNmaCE  
 
