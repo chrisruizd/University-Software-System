@@ -11,7 +11,6 @@ app.use(express.json())
 
 
 // Login route
-// server/server.js
 app.post("/login", async (req, res) => {
     const { email, password, role } = req.body;
   
@@ -39,6 +38,8 @@ app.post("/login", async (req, res) => {
 });
   
 
+
+  
 
 
 // Start the server
