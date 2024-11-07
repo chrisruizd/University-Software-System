@@ -13,11 +13,10 @@ const pool = new Pool({
 
 pool.connect();
 
-pool.query('SELECT * FROM students', (err, res)=>{
-    if(!err){
-        console.log(res.rows);
-    } else {
-        console.log(err.message);
-    }
-    pool.end;
-})
+pool.on('connect', () => {
+    console.log('Connected to the PostgreSQL database');
+});
+  
+
+// Export the pool for use in other modules
+module.exports = pool;
