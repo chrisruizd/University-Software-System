@@ -21,6 +21,9 @@ function Login() {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('role', response.data.role);
 
+      localStorage.setItem('email', email); // Store email for dashboard requests
+      localStorage.setItem('role', response.data.role);
+
       // Redirect based on role
       //print(response.data.role)
       if (response.data.role === 'student') {
