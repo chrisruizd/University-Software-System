@@ -1,11 +1,17 @@
-import React from "react";
+// src/App.js
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Login from './pages/login';
 
-const App = () => {
+function App() {
   return (
-    <div> 
-      <h1> Welcome to UniView </h1> 
-    </div>
-  )
+    <Router>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        {/* Define other routes here like dashboards */}
+      </Routes>
+    </Router>
+  );
 }
 
 export default App;
