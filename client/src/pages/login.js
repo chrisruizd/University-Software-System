@@ -39,6 +39,7 @@ function Login() {
 
   return (
     <div>
+      <h1>Welcome to UniView</h1>
       <h2>Login</h2>
       <form onSubmit={handleLogin}>
         <input

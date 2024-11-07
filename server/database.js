@@ -13,6 +13,8 @@ const pool = new Pool({
 
 pool.connect();
 
+//pool.connect().then(()=> console.log("connected to postgreSQL")); 
+
 pool.on('connect', () => {
     console.log('Connected to the PostgreSQL database');
 });

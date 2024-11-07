@@ -1,8 +1,9 @@
 # University-Software-System (UniView)
 ## SWE Final Project
 
-npm start  
-    Starts the development server
+run frontend (client folder):npm start  
+run backend (server folder): npm run dev
+
 
 
 ### Technology Stack:  
@@ -11,6 +12,8 @@ npm start
     PostgreSQL - database  
 
 ### Notes:  
+First time running frontend: npm install  
+
 client folder contains front end (React)  
     npx create-react-app .  
 
