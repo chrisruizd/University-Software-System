@@ -38,7 +38,18 @@ app.post("/login", async (req, res) => {
 });
   
 
+// Route to get student information
+app.get("/student-info", async (req, res) => {
+  const { email } = req.query;
 
+  try {
+    const student = await pool.query("SELECT * FROM students WHERE email = $1", [email]);
+    if (student.rows.length === 0) return res.status(404).json({ error: "Student not found" });
+    res.json(student.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+})
   
 
 
