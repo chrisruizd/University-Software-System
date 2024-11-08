@@ -24,6 +24,9 @@ server folder contains back end (Node.js + Express)
 
 Install Postman to test backend API  
 
+//frontend -> localhost:3000  
+//backend -> localhost:4000  
+
 
 
 ### Resources:  
