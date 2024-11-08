@@ -12,30 +12,53 @@ app.use(express.json())
 
 // Login route
 app.post("/login", async (req, res) => {
-    const { email, password, role } = req.body;
-  
-    try {
-      // Choose the appropriate table based on the role
-      let userTable;
-      if (role === 'student') userTable = 'students';
-      else if (role === 'advisor' || role === 'staff' || role === 'instructor') userTable = 'employees';
-      else return res.status(400).json({ error: "Invalid role" });
-  
-      // Verify user based on email and role
-      const result = await pool.query(`SELECT * FROM ${userTable} WHERE email = $1`, [email]);
-      if (result.rows.length === 0) return res.status(400).json({ error: "User not found" });
-  
-      const user = result.rows[0];
-  
+  const { email, password, role } = req.body;
+
+  try {
+    if (role === 'student') {
+      // Directly check in the Students table
+      const studentResult = await pool.query(`SELECT * FROM Students WHERE email = $1`, [email]);
+      if (studentResult.rows.length === 0) return res.status(400).json({ error: "User not found in the student role" });
+
+      const student = studentResult.rows[0];
+
       // Check password (assuming plaintext for simplicity)
-      if (user.hashpw !== password) return res.status(400).json({ error: "Invalid password" });
-  
-      // Respond with success message and role
-      res.json({ message: "Login successful", role });
-    } catch (error) {
-      res.status(500).json({ error: "Internal server error" });
+      if (student.hashpw !== password) return res.status(400).json({ error: "Invalid password" });
+
+      // If successful, respond with a success message and role
+      return res.json({ message: "Login successful", role });
+    } else {
+      // Check in the Employees table for advisors, staff, and instructors
+      const employeeResult = await pool.query(`SELECT * FROM Employees WHERE email = $1`, [email]);
+      if (employeeResult.rows.length === 0) return res.status(400).json({ error: "User not found in the selected role" });
+
+      const employee = employeeResult.rows[0];
+
+      // Check password (assuming plaintext for simplicity)
+      if (employee.hashpw !== password) return res.status(400).json({ error: "Invalid password" });
+
+      // Role-specific checks for advisor, staff, and instructor
+      if (role === 'advisor') {
+        const advisorResult = await pool.query(`SELECT * FROM Advisors WHERE eid = $1`, [employee.eid]);
+        if (advisorResult.rows.length === 0) return res.status(400).json({ error: "User is not an advisor" });
+      } else if (role === 'staff') {
+        const staffResult = await pool.query(`SELECT * FROM Staff WHERE eid = $1`, [employee.eid]);
+        if (staffResult.rows.length === 0) return res.status(400).json({ error: "User is not staff" });
+      } else if (role === 'instructor') {
+        const instructorResult = await pool.query(`SELECT * FROM Instructors WHERE eid = $1`, [employee.eid]);
+        if (instructorResult.rows.length === 0) return res.status(400).json({ error: "User is not an instructor" });
+      } else {
+        return res.status(400).json({ error: "Invalid role selected" });
+      }
+
+      // If all checks pass, respond with a success message and role
+      return res.json({ message: "Login successful", role });
     }
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
+
   
 
 // Route to get student information
@@ -50,6 +73,75 @@ app.get("/student-info", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 })
+
+
+
+// Route to get advisor information
+app.get("/advisor-info", async (req, res) => {
+  const { email } = req.query;
+
+  try {
+    // Join Advisors with Employees based on EID and filter by email
+    const advisor = await pool.query(
+      `SELECT e.EID, e.FirstName, e.LastName, e.Email, a.*
+       FROM Employees e
+       JOIN Advisors a ON e.EID = a.EID
+       WHERE e.Email = $1`, 
+      [email]
+    );
+
+    if (advisor.rows.length === 0) return res.status(404).json({ error: "Advisor not found" });
+    res.json(advisor.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+// Route to get instructor information
+app.get("/instructor-info", async (req, res) => {
+  const { email } = req.query;
+
+  try {
+    // Join Instructors with Employees based on EID and filter by email
+    const instructor = await pool.query(
+      `SELECT e.EID, e.FirstName, e.LastName, e.Email, i.DepartmentID
+       FROM Employees e
+       JOIN Instructors i ON e.EID = i.EID
+       WHERE e.Email = $1`, 
+      [email]
+    );
+
+    if (instructor.rows.length === 0) return res.status(404).json({ error: "Instructor not found" });
+    res.json(instructor.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+// Route to get staff information
+app.get("/staff-info", async (req, res) => {
+  const { email } = req.query;
+
+  try {
+    // Join Staff with Employees based on EID and filter by email
+    const staff = await pool.query(
+      `SELECT e.EID, e.FirstName, e.LastName, e.Email, s.DepartmentID
+       FROM Employees e
+       JOIN Staff s ON e.EID = s.EID
+       WHERE e.Email = $1`, 
+      [email]
+    );
+
+    if (staff.rows.length === 0) return res.status(404).json({ error: "Staff not found" });
+    res.json(staff.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
   
 
 
@@ -57,7 +149,3 @@ app.get("/student-info", async (req, res) => {
 const PORT = 4000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
-
-
-//frontend -> localhost:3000
-//backend -> localhost:4000
