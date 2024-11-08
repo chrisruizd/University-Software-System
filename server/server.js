@@ -198,6 +198,117 @@ app.get("/instructor-courses", async (req, res) => {
 });
 
 
+//-----------------------------------
+// Route to get current courses for a student
+app.get("/student-courses/:uid", async (req, res) => {
+  const { uid } = req.params;
+
+  try {
+    // Query to get the student's enrolled courses
+    const coursesResult = await pool.query(
+      `SELECT c.Name, c.CRN, c.Credits, c.Semester, c.Year, e.Grade, e.Completed
+       FROM Enrolled_In e
+       JOIN Courses c ON e.CRN = c.CRN
+       WHERE e.UID = $1`,
+      [uid]
+    );
+
+    // Return the enrolled courses
+    res.json(coursesResult.rows);
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.post("/add-course", async (req, res) => {
+  const { advisorEID, studentUID, crn } = req.body;
+
+  try {
+    // Step 1: Check if advisor and student belong to the same department
+    const departmentCheck = await pool.query(
+      `SELECT 1
+       FROM Advisors a
+       JOIN Advises adv ON a.EID = adv.EID
+       JOIN Students s ON s.UID = $1
+       JOIN Majors m ON s.MajorIn = m.Name
+       WHERE a.EID = $2 AND m.DepartmentID = adv.DepartmentID`,
+      [studentUID, advisorEID]
+    );
+
+    if (departmentCheck.rows.length === 0) {
+      return res.status(403).json({ error: "Advisor not authorized to add courses for this student" });
+    }
+
+    // Step 2: Check if the student is already enrolled in the course
+    const enrollmentCheck = await pool.query(
+      `SELECT 1 FROM Enrolled_In WHERE UID = $1 AND CRN = $2`,
+      [studentUID, crn]
+    );
+
+    if (enrollmentCheck.rows.length > 0) {
+      return res.status(400).json({ error: "Student is already enrolled in this course" });
+    }
+
+    // Step 3: Add the course to the student's enrollment
+    await pool.query(
+      `INSERT INTO Enrolled_In (UID, CRN, Completed)
+       VALUES ($1, $2, FALSE)`,
+      [studentUID, crn]
+    );
+
+    res.json({ message: "Course added successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+
+// Drop course from student enrollment by an advisor
+app.post("/drop-course", async (req, res) => {
+  const { advisorEID, studentUID, crn } = req.body;
+
+  try {
+    // Step 1: Check if advisor and student belong to the same department
+    const departmentCheck = await pool.query(
+      `SELECT 1
+       FROM Advisors a
+       JOIN Advises adv ON a.EID = adv.EID
+       JOIN Students s ON s.UID = $1
+       JOIN Majors m ON s.MajorIn = m.Name
+       WHERE a.EID = $2 AND m.DepartmentID = adv.DepartmentID`,
+      [studentUID, advisorEID]
+    );
+
+    if (departmentCheck.rows.length === 0) {
+      return res.status(403).json({ error: "Advisor not authorized to drop courses for this student" });
+    }
+
+    // Step 2: Check if the student is currently enrolled in the course
+    const enrollmentCheck = await pool.query(
+      `SELECT 1 FROM Enrolled_In WHERE UID = $1 AND CRN = $2`,
+      [studentUID, crn]
+    );
+
+    if (enrollmentCheck.rows.length === 0) {
+      return res.status(400).json({ error: "Student is not currently enrolled in this course" });
+    }
+
+    // Step 3: Drop the course for the student
+    await pool.query(
+      `DELETE FROM Enrolled_In WHERE UID = $1 AND CRN = $2`,
+      [studentUID, crn]
+    );
+
+    res.json({ message: "Course dropped successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
 
 
 
