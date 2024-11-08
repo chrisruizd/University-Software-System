@@ -59,7 +59,6 @@ app.post("/login", async (req, res) => {
   }
 });
 
-  
 
 // Route to get student information
 app.get("/student-info", async (req, res) => {
@@ -73,7 +72,6 @@ app.get("/student-info", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 })
-
 
 
 // Route to get advisor information
@@ -143,6 +141,64 @@ app.get("/staff-info", async (req, res) => {
 
 
   
+// Route to get enrolled courses for a student
+app.get("/student-courses", async (req, res) => {
+  const { email } = req.query;
+
+  try {
+    // Find the student's UID based on email
+    const studentResult = await pool.query("SELECT UID FROM Students WHERE email = $1", [email]);
+    if (studentResult.rows.length === 0) return res.status(404).json({ error: "Student not found" });
+
+    const uid = studentResult.rows[0].uid;
+
+    // Query to get the student's enrolled courses
+    const coursesResult = await pool.query(
+      `SELECT c.Name, c.CRN, c.StartTime, c.EndTime, c.Credits, c.Semester, c.Year, e.Grade, e.Completed
+       FROM Enrolled_In e
+       JOIN Courses c ON e.CRN = c.CRN
+       WHERE e.UID = $1`, 
+      [uid]
+    );
+
+    // Return the enrolled courses
+    res.json(coursesResult.rows);
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+
+// Route to get courses taught by an instructor
+app.get("/instructor-courses", async (req, res) => {
+  const { email } = req.query;
+
+  try {
+    // Find the instructor's EID based on email
+    const instructorResult = await pool.query("SELECT EID FROM Employees WHERE email = $1", [email]);
+    if (instructorResult.rows.length === 0) return res.status(404).json({ error: "Instructor not found" });
+
+    const eid = instructorResult.rows[0].eid;
+
+    // Query to get the courses taught by the instructor
+    const coursesResult = await pool.query(
+      `SELECT c.Name, c.CRN, c.StartTime, c.EndTime, c.Credits, c.Semester, c.Year
+       FROM Teaches t
+       JOIN Courses c ON t.CRN = c.CRN
+       WHERE t.EID = $1`, 
+      [eid]
+    );
+
+    // Return the courses taught by the instructor
+    res.json(coursesResult.rows);
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+
 
 
 // Start the server
