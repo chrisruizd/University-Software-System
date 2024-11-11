@@ -22,7 +22,19 @@ function Login() {
       localStorage.setItem('role', response.data.role);
 
       localStorage.setItem('email', email); // Store email for dashboard requests
-      localStorage.setItem('role', response.data.role);
+
+      const { userEID } = response.data; 
+      localStorage.setItem('userEID', userEID);
+
+      // Store role and identifier based on role type
+      localStorage.setItem('role', role);
+      if (role === 'staff') {
+        localStorage.setItem('staffEID', userEID);
+      } else if (role === 'instructor') {
+        localStorage.setItem('instructorEID', userEID);
+      } else if (role === 'student') {
+        localStorage.setItem('studentUID', userEID);
+      }
 
       // Redirect based on role
       //print(response.data.role)

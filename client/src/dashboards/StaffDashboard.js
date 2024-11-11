@@ -1,8 +1,10 @@
 // src/dashboards/StaffDashboard.js
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
 function StaffDashboard() {
+  const navigate = useNavigate();
   const [staffInfo, setStaffInfo] = useState({});
   const email = localStorage.getItem('email'); // Retrieve stored email
 
@@ -31,10 +33,20 @@ function StaffDashboard() {
       <h2>Staff Dashboard</h2>
       {staffInfo ? (
         <>
-          <p>Welcome, {staffInfo.firstname} {staffInfo.lastname}</p>
-          <p>Email: {staffInfo.email}</p>
-          <p>Department ID: {staffInfo.departmentid}</p>
-          <button onClick={handleLogout}>Logout</button>
+          <div>
+            <p>Welcome, {staffInfo.firstname} {staffInfo.lastname}</p>
+            <p>Email: {staffInfo.email}</p>
+            <p>Department ID: {staffInfo.departmentid}</p>
+            <button onClick={handleLogout}>Logout</button>
+          </div>
+          <br></br>
+          <div>
+            <button onClick={() => navigate('/staff/edit-student')}>View/Edit a Student</button>
+            <button onClick={() => navigate('/staff/edit-instructor')}>View/Edit an Instructor</button>
+            <button onClick={() => navigate('/staff/edit-course')}>View/Edit a Course</button>
+            <button onClick={() => navigate('/staff/edit-advisor')}>View/Edit an Advisor</button>
+            <button onClick={() => navigate('/staff/edit-department')}>View/Edit a Department</button>
+          </div>
         </>
       ) : (
         <p>Loading...</p>

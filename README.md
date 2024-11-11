@@ -1,13 +1,14 @@
 # University-Software-System (UniView)
 ## SWE Final Project
 
+
 run frontend (client folder):npm start  
 run backend (server folder): npm run dev
 
 
 
 ### Technology Stack:  
-    React - front end  
+    React - frontend  
     Node.js + Express - backend  
     PostgreSQL - database  
 
@@ -38,3 +39,6 @@ Back end (server):
 
 Connect Node.js to PostgreSQL:  
     https://www.youtube.com/watch?v=_n-Ai30C1qs  
+
+
+Figma Link: https://www.figma.com/design/qsoTAljN27fIzX6sLbsOpf/Software-Engineering?node-id=0-1&node-type=canvas&t=5mjTXemWj7kRnKsl-0
