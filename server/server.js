@@ -21,6 +21,7 @@ app.post("/login", async (req, res) => {
       if (studentResult.rows.length === 0) return res.status(400).json({ error: "User not found in the student role" });
 
       const student = studentResult.rows[0];
+      //let userID = student.eid;
 
       // Check password (assuming plaintext for simplicity)
       if (student.hashpw !== password) return res.status(400).json({ error: "Invalid password" });
@@ -33,6 +34,7 @@ app.post("/login", async (req, res) => {
       if (employeeResult.rows.length === 0) return res.status(400).json({ error: "User not found in the selected role" });
 
       const employee = employeeResult.rows[0];
+      let userEID = employee.eid;
 
       // Check password (assuming plaintext for simplicity)
       if (employee.hashpw !== password) return res.status(400).json({ error: "Invalid password" });
@@ -52,7 +54,7 @@ app.post("/login", async (req, res) => {
       }
 
       // If all checks pass, respond with a success message and role
-      return res.json({ message: "Login successful", role });
+      return res.json({ message: "Login successful", role, userEID });
     }
   } catch (error) {
     res.status(500).json({ error: "Internal server error" });
@@ -309,7 +311,238 @@ app.post("/drop-course", async (req, res) => {
 });
 
 
+//-------------Staff Actions---------------------------------------
 
+
+    //Sudent
+// Get student data by UID
+app.get("/students/:uid", async (req, res) => {
+  const { uid } = req.params;
+  
+  try {
+    const result = await pool.query("SELECT * FROM Students WHERE UID = $1", [uid]);
+    if (result.rows.length === 0) return res.status(404).json({ error: "Student not found" });
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Add a new student
+app.post("/students", async (req, res) => {
+  const {
+    uid,
+    hashpw,
+    email,
+    firstname,
+    lastname,
+    majorin,
+    gpa,
+    advised_by,
+    credits,
+  } = req.body;
+
+  try {
+    // Check if the major exists
+    const majorCheck = await pool.query("SELECT 1 FROM Majors WHERE Name = $1", [majorin]);
+    if (majorCheck.rows.length === 0) {
+      return res.status(400).json({ error: "Major does not exist" });
+    }
+
+    // Check if the advisor exists (if provided)
+    if (advised_by) {
+      const advisorCheck = await pool.query("SELECT 1 FROM Advisors WHERE EID = $1", [advised_by]);
+      if (advisorCheck.rows.length === 0) {
+        return res.status(400).json({ error: "Advisor does not exist" });
+      }
+    }
+
+    // Insert the new student into the Students table
+    await pool.query(
+      `INSERT INTO Students (UID, HashPW, Email, FirstName, LastName, MajorIn, GPA, Advised_By, Credits)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [uid, hashpw, email, firstname, lastname, majorin, gpa, advised_by || null, credits || 0]
+    );
+
+    res.json({ message: "Student added successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+    //Instructor
+// Get instructor data by EID
+app.get("/instructors/:eid", async (req, res) => {
+  const { eid } = req.params;
+
+  try {
+    const result = await pool.query(
+      `SELECT e.*, i.DepartmentID
+       FROM Employees e
+       JOIN Instructors i ON e.EID = i.EID
+       WHERE e.EID = $1`,
+      [eid]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: "Instructor not found" });
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+// Add a new instructor
+app.post("/instructors", async (req, res) => {
+  const { eid, hashpw, email, firstname, lastname, departmentid, staffEID } = req.body;
+
+  try {
+    // Verify if the staff member and instructor belong to the same department
+    const staffCheck = await pool.query(
+      `SELECT 1 FROM Staff WHERE EID = $1 AND DepartmentID = $2`,
+      [staffEID, departmentid]
+    );
+    if (staffCheck.rows.length === 0) {
+      return res.status(403).json({ error: "Unauthorized to add instructor for this department" });
+    }
+
+    // Insert into Employees and Instructors tables
+    await pool.query(
+      `INSERT INTO Employees (EID, HashPW, Email, FirstName, LastName) VALUES ($1, $2, $3, $4, $5)`,
+      [eid, hashpw, email, firstname, lastname]
+    );
+    await pool.query(
+      `INSERT INTO Instructors (EID, DepartmentID) VALUES ($1, $2)`,
+      [eid, departmentid]
+    );
+
+    res.json({ message: "Instructor added successfully" });
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Update instructor data
+app.put("/instructors/:eid", async (req, res) => {
+  const { eid } = req.params;
+  const { email, firstname, lastname, departmentid, staffEID} = req.body;
+  
+  console.log(req.body);
+  try {
+    // Check if staff and instructor belong to the same department
+    const staffCheck = await pool.query(
+      `SELECT 1 FROM Staff WHERE EID = $1 AND DepartmentID = $2`,
+      [staffEID, departmentid]
+    );
+    if (staffCheck.rows.length === 0) {
+      return res.status(403).json({ error: "Unauthorized to update instructor for this department" });
+    }
+
+    // Update Employees and Instructors tables
+    await pool.query(
+      `UPDATE Employees SET Email = $1, FirstName = $2, LastName = $3 WHERE EID = $4`,
+      [email, firstname, lastname, eid]
+    );
+    await pool.query(
+      `UPDATE Instructors SET DepartmentID = $1 WHERE EID = $2`,
+      [departmentid, eid]
+    );
+
+    res.json({ message: "Instructor updated successfully" });
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+
+
+// Advisor ---------------------
+
+// server.js
+
+// Get advisor data by EID
+app.get("/advisors/:eid", async (req, res) => {
+  const { eid } = req.params;
+
+  try {
+    const result = await pool.query(
+      `SELECT e.*, a.DepartmentID
+       FROM Employees e
+       JOIN Advises a ON e.EID = a.EID
+       WHERE e.EID = $1`,
+      [eid]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: "Advisor not found" });
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Add a new advisor
+app.post("/advisors", async (req, res) => {
+  const { eid, hashpw, email, firstname, lastname, departmentid, staffEID } = req.body;
+
+  try {
+    const staffCheck = await pool.query(
+      `SELECT 1 FROM Staff WHERE EID = $1 AND DepartmentID = $2`,
+      [staffEID, departmentid]
+    );
+    if (staffCheck.rows.length === 0) {
+      return res.status(403).json({ error: "Unauthorized to add advisor for this department" });
+    }
+
+    await pool.query(
+      `INSERT INTO Employees (EID, HashPW, Email, FirstName, LastName) VALUES ($1, $2, $3, $4, $5)`,
+      [eid, hashpw, email, firstname, lastname]
+    );
+    await pool.query(
+      `INSERT INTO Advisors (EID) VALUES ($1)`,
+      [eid]
+    );
+    await pool.query(
+      `INSERT INTO Advises (EID, DepartmentID) VALUES ($1, $2)`,
+      [eid, departmentid]
+    );
+
+    res.json({ message: "Advisor added successfully" });
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Update advisor data
+app.put("/advisors/:eid", async (req, res) => {
+  const { eid } = req.params;
+  const { email, firstname, lastname, departmentid, staffEID } = req.body;
+
+  try {
+    const staffCheck = await pool.query(
+      `SELECT 1 FROM Staff WHERE EID = $1 AND DepartmentID = $2`,
+      [staffEID, departmentid]
+    );
+    if (staffCheck.rows.length === 0) {
+      return res.status(403).json({ error: "Unauthorized to update advisor for this department" });
+    }
+
+    await pool.query(
+      `UPDATE Employees SET Email = $1, FirstName = $2, LastName = $3 WHERE EID = $4`,
+      [email, firstname, lastname, eid]
+    );
+    await pool.query(
+      `UPDATE Advises SET DepartmentID = $1 WHERE EID = $2`,
+      [departmentid, eid]
+    );
+
+    res.json({ message: "Advisor updated successfully" });
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+
+// Department -------------------------------
 
 
 // Start the server
