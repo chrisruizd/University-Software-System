@@ -565,8 +565,8 @@ app.post("/advisors", async (req, res) => {
       [eid, hashpw, email, firstname, lastname]
     );
     await pool.query(
-      `INSERT INTO Advisors (EID) VALUES ($1)`,
-      [eid]
+      `INSERT INTO Advisors (EID, DepartmentID) VALUES ($1, $2)`,
+      [eid, departmentid]
     );
     await pool.query(
       `INSERT INTO Advises (EID, DepartmentID) VALUES ($1, $2)`,
