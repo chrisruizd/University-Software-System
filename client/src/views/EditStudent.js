@@ -1,15 +1,14 @@
-// src/views/EditStudent.js
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 function EditStudent() {
   const [studentUID, setStudentUID] = useState('');
   const [studentData, setStudentData] = useState(null);
   const [message, setMessage] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
-  
-  // State for new student attributes
+
   const [newStudent, setNewStudent] = useState({
     uid: '',
     hashpw: '',
@@ -22,9 +21,9 @@ function EditStudent() {
     credits: '',
   });
 
-  const navigate = useNavigate(); // Initialize useNavigate
+  const navigate = useNavigate();
 
-  // Fetch student data by UID
+  // Fetch student data
   const fetchStudentData = async () => {
     try {
       const response = await api.get(`/students/${studentUID}`);
@@ -38,13 +37,17 @@ function EditStudent() {
   // Toggle the form for adding a new student
   const toggleAddStudentForm = () => {
     setShowAddForm(!showAddForm);
-    setStudentData(null); // Clear current student data if showing add form
+    setStudentData(null);
   };
 
-  // Handle form input changes for adding a new student
+  // Handle input changes for both add and edit forms
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setNewStudent({ ...newStudent, [name]: value });
+    if (studentData) {
+      setStudentData({ ...studentData, [name]: value });
+    } else {
+      setNewStudent({ ...newStudent, [name]: value });
+    }
   };
 
   // Submit new student data
@@ -54,85 +57,287 @@ function EditStudent() {
       const response = await api.post('/students', newStudent);
       setMessage(response.data.message);
       setShowAddForm(false);
+      setNewStudent({
+        uid: '',
+        hashpw: '',
+        email: '',
+        firstname: '',
+        lastname: '',
+        majorin: '',
+        gpa: '',
+        advised_by: '',
+        credits: '',
+      });
     } catch (error) {
       setMessage(error.response?.data?.error || 'Failed to add student');
     }
   };
 
+  // Update existing student data
+  const updateStudentData = async () => {
+    try {
+      const response = await api.put(`/students/${studentData.uid}`, studentData);
+      setMessage(response.data.message);
+    } catch (error) {
+      setMessage(error.response?.data?.error || 'Failed to update student');
+    }
+  };
+
   return (
-    <div>
-      <h2>View/Edit a Student</h2>
+    <div className="container mt-4">
+      <h2 className="text-center mb-4">View/Edit a Student</h2>
 
-      <div>
-        {/* Back to Staff Dashboard Button */}
-        <button onClick={() => navigate('/staff-dashboard')}>Back to Staff Dashboard</button>
+      <div className="d-flex justify-content-between mb-3">
+        <button className="btn btn-secondary" onClick={() => navigate('/staff-dashboard')}>
+          Back to Staff Dashboard
+        </button>
+        <button className="btn btn-primary" onClick={toggleAddStudentForm}>
+          {showAddForm ? 'Cancel Adding New Student' : 'Add a New Student'}
+        </button>
       </div>
-      <br></br>
 
-      {/* Input for fetching student data */}
-      <input
-        type="text"
-        value={studentUID}
-        onChange={(e) => setStudentUID(e.target.value)}
-        placeholder="Enter Student UID"
-      />
-      <button onClick={fetchStudentData}>View/Edit Student Data</button>
-      <button onClick={toggleAddStudentForm}>Add a New Student</button>
-      
-      {message && <p>{message}</p>}
-      
-      {/* Display student data if available */}
+      <div className="mb-4">
+        <input
+          type="text"
+          className="form-control mb-2"
+          value={studentUID}
+          onChange={(e) => setStudentUID(e.target.value)}
+          placeholder="Enter Student UID"
+        />
+        <button className="btn btn-primary w-100" onClick={fetchStudentData}>
+          View/Edit Student Data
+        </button>
+      </div>
+
+      {message && <div className="alert alert-info">{message}</div>}
+
       {studentData && (
-        <div>
-          <h3>Student Details</h3>
-          <p>UID: {studentData.uid}</p>
-          <p>First Name: {studentData.firstname}</p>
-          <p>Last Name: {studentData.lastname}</p>
-          <p>Email: {studentData.email}</p>
-          <p>Major: {studentData.majorin}</p>
-          <p>GPA: {studentData.gpa}</p>
-          <p>Advised By: {studentData.advised_by}</p>
-          <p>Credits: {studentData.credits}</p>
-          {/* Add more fields as needed */}
+        <div className="card mb-4">
+          <div className="card-body">
+            <h3 className="card-title">Edit Student Details</h3>
+            <form>
+              <div className="mb-3">
+                <label>UID:</label>
+                <input type="text" name="uid" className="form-control" value={studentData.uid} readOnly />
+              </div>
+
+              <div className="mb-3">
+                <label>Password (HashPW):</label>
+                <input
+                  type="text"
+                  name="hashpw"
+                  className="form-control"
+                  value={studentData.hashpw}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              <div className="mb-3">
+                <label>Email:</label>
+                <input
+                  type="email"
+                  name="email"
+                  className="form-control"
+                  value={studentData.email}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              <div className="mb-3">
+                <label>First Name:</label>
+                <input
+                  type="text"
+                  name="firstname"
+                  className="form-control"
+                  value={studentData.firstname}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              <div className="mb-3">
+                <label>Last Name:</label>
+                <input
+                  type="text"
+                  name="lastname"
+                  className="form-control"
+                  value={studentData.lastname}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              <div className="mb-3">
+                <label>Major:</label>
+                <input
+                  type="text"
+                  name="majorin"
+                  className="form-control"
+                  value={studentData.majorin}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              <div className="mb-3">
+                <label>GPA:</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="gpa"
+                  className="form-control"
+                  value={studentData.gpa}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              <div className="mb-3">
+                <label>Advised By (Advisor EID):</label>
+                <input
+                  type="text"
+                  name="advised_by"
+                  className="form-control"
+                  value={studentData.advised_by}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              <div className="mb-3">
+                <label>Credits:</label>
+                <input
+                  type="number"
+                  name="credits"
+                  className="form-control"
+                  value={studentData.credits}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              <button type="button" className="btn btn-success w-100" onClick={updateStudentData}>
+                Save Changes
+              </button>
+            </form>
+          </div>
         </div>
       )}
 
-      {/* Add Student Form */}
-      {showAddForm && (
-        <div>
-          <h3>Add New Student</h3>
-          <form onSubmit={submitNewStudent}>
-            <label>UID:</label>
-            <input type="text" name="uid" value={newStudent.uid} onChange={handleInputChange} required />
-
-            <label>Password (HashPW):</label>
-            <input type="text" name="hashpw" value={newStudent.hashpw} onChange={handleInputChange} required />
-
-            <label>Email:</label>
-            <input type="email" name="email" value={newStudent.email} onChange={handleInputChange} required />
-
-            <label>First Name:</label>
-            <input type="text" name="firstname" value={newStudent.firstname} onChange={handleInputChange} required />
-
-            <label>Last Name:</label>
-            <input type="text" name="lastname" value={newStudent.lastname} onChange={handleInputChange} required />
-
-            <label>Major:</label>
-            <input type="text" name="majorin" value={newStudent.majorin} onChange={handleInputChange} required />
-
-            <label>GPA:</label>
-            <input type="number" step="0.01" name="gpa" value={newStudent.gpa} onChange={handleInputChange} required />
-
-            <label>Advised By (Advisor EID):</label>
-            <input type="text" name="advised_by" value={newStudent.advised_by} onChange={handleInputChange} />
-
-            <label>Credits:</label>
-            <input type="number" name="credits" value={newStudent.credits} onChange={handleInputChange} />
-
-            <button type="submit">Submit</button>
-          </form>
+{showAddForm && (
+  <div className="card mb-4">
+    <div className="card-body">
+      <h3 className="card-title">Add New Student</h3>
+      <form onSubmit={submitNewStudent}>
+        <div className="mb-3">
+          <label>UID:</label>
+          <input
+            type="text"
+            name="uid"
+            className="form-control"
+            value={newStudent.uid}
+            onChange={handleInputChange}
+            required
+          />
         </div>
-      )}
+
+        <div className="mb-3">
+          <label>Password (HashPW):</label>
+          <input
+            type="text"
+            name="hashpw"
+            className="form-control"
+            value={newStudent.hashpw}
+            onChange={handleInputChange}
+            required
+          />
+        </div>
+
+        <div className="mb-3">
+          <label>Email:</label>
+          <input
+            type="email"
+            name="email"
+            className="form-control"
+            value={newStudent.email}
+            onChange={handleInputChange}
+            required
+          />
+        </div>
+
+        <div className="mb-3">
+          <label>First Name:</label>
+          <input
+            type="text"
+            name="firstname"
+            className="form-control"
+            value={newStudent.firstname}
+            onChange={handleInputChange}
+            required
+          />
+        </div>
+
+        <div className="mb-3">
+          <label>Last Name:</label>
+          <input
+            type="text"
+            name="lastname"
+            className="form-control"
+            value={newStudent.lastname}
+            onChange={handleInputChange}
+            required
+          />
+        </div>
+
+        <div className="mb-3">
+          <label>Major:</label>
+          <input
+            type="text"
+            name="majorin"
+            className="form-control"
+            value={newStudent.majorin}
+            onChange={handleInputChange}
+            required
+          />
+        </div>
+
+        <div className="mb-3">
+          <label>GPA:</label>
+          <input
+            type="number"
+            step="0.01"
+            name="gpa"
+            className="form-control"
+            value={newStudent.gpa}
+            onChange={handleInputChange}
+            required
+          />
+        </div>
+
+        <div className="mb-3">
+          <label>Advised By (Advisor EID):</label>
+          <input
+            type="text"
+            name="advised_by"
+            className="form-control"
+            value={newStudent.advised_by}
+            onChange={handleInputChange}
+          />
+        </div>
+
+        <div className="mb-3">
+          <label>Credits:</label>
+          <input
+            type="number"
+            name="credits"
+            className="form-control"
+            value={newStudent.credits}
+            onChange={handleInputChange}
+          />
+        </div>
+
+        <button type="submit" className="btn btn-primary w-100">
+          Submit
+        </button>
+      </form>
+    </div>
+  </div>
+)}
+
     </div>
   );
 }

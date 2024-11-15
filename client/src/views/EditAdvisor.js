@@ -1,7 +1,7 @@
-// src/views/EditAdvisor.js
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 function EditAdvisor() {
   const [advisorEID, setAdvisorEID] = useState('');
@@ -18,9 +18,8 @@ function EditAdvisor() {
     departmentid: '',
   });
 
-  const navigate = useNavigate(); // Initialize useNavigate
+  const navigate = useNavigate();
 
-  // Fetch advisor data by EID
   const fetchAdvisorData = async () => {
     try {
       const response = await api.get(`/advisors/${advisorEID}`);
@@ -31,19 +30,16 @@ function EditAdvisor() {
     }
   };
 
-  // Toggle the form for adding a new advisor
   const toggleAddAdvisorForm = () => {
     setShowAddForm(!showAddForm);
-    setAdvisorData(null); // Clear current advisor data if showing add form
+    setAdvisorData(null);
   };
 
-  // Handle form input changes for adding a new advisor
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewAdvisor({ ...newAdvisor, [name]: value });
   };
 
-  // Submit new advisor data
   const submitNewAdvisor = async (e) => {
     const staffEID = localStorage.getItem('userEID');
     e.preventDefault();
@@ -51,25 +47,28 @@ function EditAdvisor() {
       const response = await api.post('/advisors', { ...newAdvisor, staffEID });
       setMessage(response.data.message);
       setShowAddForm(false);
+      setNewAdvisor({
+        eid: '',
+        hashpw: '',
+        email: '',
+        firstname: '',
+        lastname: '',
+        departmentid: '',
+      });
     } catch (error) {
       setMessage(error.response?.data?.error || 'Failed to add advisor');
     }
   };
 
-  // Handle input changes for advisor data update
   const handleInputUpdate = (e) => {
     const { name, value } = e.target;
     setAdvisorData({ ...advisorData, [name]: value });
   };
 
-  // Submit updated advisor data
   const updateAdvisorData = async () => {
     const staffEID = localStorage.getItem('userEID');
     try {
-      const response = await api.put(`/advisors/${advisorEID}`, {
-        ...advisorData,
-        staffEID, // Include the staff EID for authorization
-      });
+      const response = await api.put(`/advisors/${advisorEID}`, { ...advisorData, staffEID });
       setMessage(response.data.message);
     } catch (error) {
       setMessage(error.response?.data?.error || 'Failed to update advisor');
@@ -77,99 +76,172 @@ function EditAdvisor() {
   };
 
   return (
-    <div>
-      <h2>View/Edit an Advisor</h2>
+    <div className="container mt-4">
+      <h2 className="text-center mb-4">View/Edit an Advisor</h2>
 
-      <div>
-        <button onClick={() => navigate('/staff-dashboard')}>Back to Staff Dashboard</button>
+      <div className="d-flex justify-content-between mb-3">
+        <button className="btn btn-secondary" onClick={() => navigate('/staff-dashboard')}>
+          Back to Staff Dashboard
+        </button>
+        <button className="btn btn-primary" onClick={toggleAddAdvisorForm}>
+          {showAddForm ? 'Cancel Adding New Advisor' : 'Add a New Advisor'}
+        </button>
       </div>
-      <br></br>
 
-      <input
-        type="text"
-        value={advisorEID}
-        onChange={(e) => setAdvisorEID(e.target.value)}
-        placeholder="Enter Advisor EID"
-      />
-      <button onClick={fetchAdvisorData}>View/Edit Advisor Data</button>
-      <button onClick={toggleAddAdvisorForm}>Add a New Advisor</button>
+      <div className="mb-4">
+        <input
+          type="text"
+          className="form-control mb-2"
+          value={advisorEID}
+          onChange={(e) => setAdvisorEID(e.target.value)}
+          placeholder="Enter Advisor EID"
+        />
+        <button className="btn btn-primary w-100" onClick={fetchAdvisorData}>
+          View/Edit Advisor Data
+        </button>
+      </div>
 
-      {message && <p>{message}</p>}
+      {message && <div className="alert alert-info">{message}</div>}
 
       {advisorData && (
-        <div>
-          <h3>Advisor Details</h3>
-          <p>EID: {advisorData.eid}</p>
-          <p>First Name: {advisorData.firstname}</p>
-          <p>Last Name: {advisorData.lastname}</p>
-          <p>Email: {advisorData.email}</p>
-          <p>Department ID: {advisorData.departmentid}</p>
-
-          <div>
-            <h3>Edit Advisor Details</h3>
+        <div className="card mb-4">
+          <div className="card-body">
+            <h3 className="card-title">Advisor Details</h3>
             <form>
-              <label>Email:</label>
-              <input
-                type="email"
-                name="email"
-                value={advisorData.email}
-                onChange={handleInputUpdate}
-              />
+              <div className="mb-3">
+                <label>Email:</label>
+                <input
+                  type="email"
+                  name="email"
+                  className="form-control"
+                  value={advisorData.email}
+                  onChange={handleInputUpdate}
+                />
+              </div>
 
-              <label>First Name:</label>
-              <input
-                type="text"
-                name="firstname"
-                value={advisorData.firstname}
-                onChange={handleInputUpdate}
-              />
+              <div className="mb-3">
+                <label>First Name:</label>
+                <input
+                  type="text"
+                  name="firstname"
+                  className="form-control"
+                  value={advisorData.firstname}
+                  onChange={handleInputUpdate}
+                />
+              </div>
 
-              <label>Last Name:</label>
-              <input
-                type="text"
-                name="lastname"
-                value={advisorData.lastname}
-                onChange={handleInputUpdate}
-              />
+              <div className="mb-3">
+                <label>Last Name:</label>
+                <input
+                  type="text"
+                  name="lastname"
+                  className="form-control"
+                  value={advisorData.lastname}
+                  onChange={handleInputUpdate}
+                />
+              </div>
 
-              <label>Department ID:</label>
-              <input
-                type="text"
-                name="departmentid"
-                value={advisorData.departmentid}
-                onChange={handleInputUpdate}
-              />
+              <div className="mb-3">
+                <label>Department ID:</label>
+                <input
+                  type="text"
+                  name="departmentid"
+                  className="form-control"
+                  value={advisorData.departmentid}
+                  onChange={handleInputUpdate}
+                />
+              </div>
 
-              <button type="button" onClick={updateAdvisorData}>Save Changes</button>
+              <button type="button" className="btn btn-success w-100" onClick={updateAdvisorData}>
+                Save Changes
+              </button>
             </form>
           </div>
         </div>
       )}
 
       {showAddForm && (
-        <div>
-          <h3>Add New Advisor</h3>
-          <form onSubmit={submitNewAdvisor}>
-            <label>EID:</label>
-            <input type="text" name="eid" value={newAdvisor.eid} onChange={handleInputChange} required />
+        <div className="card mb-4">
+          <div className="card-body">
+            <h3 className="card-title">Add New Advisor</h3>
+            <form onSubmit={submitNewAdvisor}>
+              <div className="mb-3">
+                <label>EID:</label>
+                <input
+                  type="text"
+                  name="eid"
+                  className="form-control"
+                  value={newAdvisor.eid}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
 
-            <label>Password (HashPW):</label>
-            <input type="text" name="hashpw" value={newAdvisor.hashpw} onChange={handleInputChange} required />
+              <div className="mb-3">
+                <label>Password (HashPW):</label>
+                <input
+                  type="text"
+                  name="hashpw"
+                  className="form-control"
+                  value={newAdvisor.hashpw}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
 
-            <label>Email:</label>
-            <input type="email" name="email" value={newAdvisor.email} onChange={handleInputChange} required />
+              <div className="mb-3">
+                <label>Email:</label>
+                <input
+                  type="email"
+                  name="email"
+                  className="form-control"
+                  value={newAdvisor.email}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
 
-            <label>First Name:</label>
-            <input type="text" name="firstname" value={newAdvisor.firstname} onChange={handleInputChange} required />
+              <div className="mb-3">
+                <label>First Name:</label>
+                <input
+                  type="text"
+                  name="firstname"
+                  className="form-control"
+                  value={newAdvisor.firstname}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
 
-            <label>Last Name:</label>
-            <input type="text" name="lastname" value={newAdvisor.lastname} onChange={handleInputChange} required />
+              <div className="mb-3">
+                <label>Last Name:</label>
+                <input
+                  type="text"
+                  name="lastname"
+                  className="form-control"
+                  value={newAdvisor.lastname}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
 
-            <label>Department ID:</label>
-            <input type="text" name="departmentid" value={newAdvisor.departmentid} onChange={handleInputChange} required />
+              <div className="mb-3">
+                <label>Department ID:</label>
+                <input
+                  type="text"
+                  name="departmentid"
+                  className="form-control"
+                  value={newAdvisor.departmentid}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
 
-            <button type="submit">Submit</button>
-          </form>
+              <button type="submit" className="btn btn-primary w-100">
+                Submit
+              </button>
+            </form>
+          </div>
         </div>
       )}
     </div>
