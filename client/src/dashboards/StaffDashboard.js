@@ -24,7 +24,7 @@ function StaffDashboard() {
     localStorage.removeItem('email');
     localStorage.removeItem('role');
     localStorage.removeItem('token');
-    window.location.href = '/login';
+    window.location.href = '/';
   };
 
   return (

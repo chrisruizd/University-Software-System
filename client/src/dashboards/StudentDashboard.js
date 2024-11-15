@@ -8,6 +8,16 @@ function StudentDashboard() {
   const email = localStorage.getItem('email');
   const navigate = useNavigate();
 
+  // Helper function to map numeric grades to letter grades
+  const getLetterGrade = (numericGrade) => {
+    if (numericGrade === null) return 'N/A';
+    if (numericGrade >= 3.7) return 'A';
+    if (numericGrade >= 3.0) return 'B';
+    if (numericGrade >= 2.0) return 'C';
+    if (numericGrade >= 1.0) return 'D';
+    return 'F';
+  };
+
   useEffect(() => {
     const fetchStudentInfo = async () => {
       try {
@@ -87,7 +97,7 @@ function StudentDashboard() {
                         <strong>Start Time:</strong> {new Date(course.starttime).toLocaleTimeString()}<br />
                         <strong>End Time:</strong> {new Date(course.endtime).toLocaleTimeString()}<br />
                         <strong>Class Days:</strong> {course.classdays || 'N/A'}<br />
-                        <strong>Grade:</strong> {course.completed ? course.grade : 'In Progress'}
+                        <strong>Grade:</strong> {course.completed ? getLetterGrade(course.grade) : 'In Progress'}
                       </p>
                     </div>
                   </div>

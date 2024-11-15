@@ -9,35 +9,81 @@ app.use(cors());
 app.use(express.json())
 
 
-
-// Updated Login route
+// login
 app.post("/login", async (req, res) => {
   const { email, password, role } = req.body;
 
   try {
-    const userResult = await pool.query(`SELECT * FROM Employees WHERE email = $1`, [email]);
-    if (userResult.rows.length === 0) return res.status(400).json({ error: "User not found" });
+    if (role === 'student') {
+      // Check if the user is a student
+      const studentResult = await pool.query(`SELECT * FROM Students WHERE email = $1`, [email]);
+      if (studentResult.rows.length === 0) return res.status(400).json({ error: "User not found in the student role" });
 
-    const user = userResult.rows[0];
+      const student = studentResult.rows[0];
+      if (student.hashpw !== password) return res.status(400).json({ error: "Invalid password" });
 
-    // Check password (assuming plaintext for simplicity)
-    if (user.hashpw !== password) return res.status(400).json({ error: "Invalid password" });
+      return res.json({ message: "Login successful", role, userEID: student.uid });
+    } 
+    else if (role === 'advisor') {
+      // Check if the user is an advisor
+      const advisorResult = await pool.query(
+        `SELECT e.*, a.*
+         FROM Employees e
+         JOIN Advisors a ON e.EID = a.EID
+         WHERE e.email = $1`, [email]
+      );
+      if (advisorResult.rows.length === 0) return res.status(400).json({ error: "User not found in the advisor role" });
 
-    // Handle system administrator role
-    if (user.role === 'system_admin') {
-      return res.json({ message: "Login successful", role: 'system_admin', userEID: user.eid });
+      const advisor = advisorResult.rows[0];
+      if (advisor.hashpw !== password) return res.status(400).json({ error: "Invalid password" });
+
+      return res.json({ message: "Login successful", role, userEID: advisor.eid });
+    } 
+    else if (role === 'instructor') {
+      // Check if the user is an instructor
+      const instructorResult = await pool.query(
+        `SELECT e.*, i.*
+         FROM Employees e
+         JOIN Instructors i ON e.EID = i.EID
+         WHERE e.email = $1`, [email]
+      );
+      if (instructorResult.rows.length === 0) return res.status(400).json({ error: "User not found in the instructor role" });
+
+      const instructor = instructorResult.rows[0];
+      if (instructor.hashpw !== password) return res.status(400).json({ error: "Invalid password" });
+
+      return res.json({ message: "Login successful", role, userEID: instructor.eid });
+    } 
+    else if (role === 'staff') {
+      // Check if the user is staff
+      const staffResult = await pool.query(`SELECT * FROM Employees WHERE email = $1`, [email]);
+      if (staffResult.rows.length === 0) return res.status(400).json({ error: "User not found in the staff role" });
+
+      const staff = staffResult.rows[0];
+      if (staff.hashpw !== password) return res.status(400).json({ error: "Invalid password" });
+
+      return res.json({ message: "Login successful", role, userEID: staff.eid });
+    } 
+    else if (role === 'system_admin') {
+      // Check if the user is a system admin
+      const adminResult = await pool.query(`SELECT * FROM Employees WHERE email = $1`, [email]);
+      if (adminResult.rows.length === 0) return res.status(400).json({ error: "System admin not found" });
+
+      const admin = adminResult.rows[0];
+      if (admin.hashpw !== password) return res.status(400).json({ error: "Invalid password" });
+
+      return res.json({ message: "Login successful", role });
+    } 
+    else {
+      return res.status(400).json({ error: "Invalid role selected" });
     }
-
-    // Existing role checks (student, advisor, etc.)
-    if (role === 'advisor' || role === 'student' || role === 'instructor') {
-      return res.json({ message: "Login successful", role, userEID: user.eid });
-    }
-
-    return res.status(400).json({ error: "Invalid role selected" });
   } catch (error) {
+    console.error("Login error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+
 
 
 
@@ -701,6 +747,125 @@ app.put("/edit-department", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// Route to get GPA statistics for each major
+app.get('/api/gpa-by-major', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        m.Name AS major,
+        MAX(s.GPA) AS highestGPA,
+        MIN(s.GPA) AS lowestGPA,
+        ROUND(AVG(s.GPA), 2) AS averageGPA
+      FROM Students s
+      JOIN Majors m ON s.MajorIn = m.Name
+      GROUP BY m.Name
+      ORDER BY m.Name;
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// server.js
+// get department rank by GPA system report
+app.get("/api/department-rank-by-gpa", async (req, res) => {
+  try {
+    // Query to get the average GPA for each department
+    const result = await pool.query(
+      `SELECT d.Name AS department, 
+              ROUND(AVG(s.GPA), 2) AS averagegpa
+       FROM Students s
+       JOIN Majors m ON s.MajorIn = m.Name
+       JOIN Departments d ON m.DepartmentID = d.DepartmentID
+       GROUP BY d.Name
+       ORDER BY averagegpa DESC`
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Failed to fetch department GPA data:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Route to get all students by major, sorted by total credits
+app.get("/api/students-by-major-credits", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        m.Name AS major,
+        s.UID AS studentid,
+        CONCAT(s.FirstName, ' ', s.LastName) AS studentname,
+        s.Credits AS totalcredits
+      FROM Students s
+      JOIN Majors m ON s.MajorIn = m.Name
+      ORDER BY m.Name, s.Credits DESC;
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Failed to fetch student data by major:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Route to get instructor course enrollment by major
+app.get("/api/instructor-course-enrollment", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        i.EID AS instructorid,
+        CONCAT(e.FirstName, ' ', e.LastName) AS instructorname,
+        c.CRN AS coursecode,
+        m.Name AS major,
+        COUNT(ei.UID) AS totalstudents
+      FROM Instructors i
+      JOIN Employees e ON i.EID = e.EID
+      JOIN Teaches t ON i.EID = t.EID
+      JOIN Courses c ON t.CRN = c.CRN
+      JOIN Enrolled_In ei ON c.CRN = ei.CRN
+      JOIN Students s ON ei.UID = s.UID
+      JOIN Majors m ON s.MajorIn = m.Name
+      GROUP BY i.EID, e.FirstName, e.LastName, c.CRN, m.Name
+      ORDER BY i.EID, c.CRN, m.Name;
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Failed to fetch instructor course enrollment data:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// server.js
+
+// Get course enrollments and average grades by semester
+app.get("/api/course-enrollments", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+          c.Semester,
+          c.CRN AS CourseID,
+          c.Name AS CourseName,
+          COUNT(e.UID) AS TotalEnrollments,
+          ROUND(AVG(e.Grade), 2) AS AverageGrade
+      FROM Courses c
+      JOIN Enrolled_In e ON c.CRN = e.CRN
+      WHERE e.Grade IS NOT NULL
+      GROUP BY c.Semester, c.CRN, c.Name
+      ORDER BY c.Semester, c.CRN;
+    `);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Failed to fetch course enrollments data:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+
 
 
 

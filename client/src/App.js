@@ -22,19 +22,44 @@ import GPAWhatIfAnalysis from './components/GPAWhatIfAnalysis';
 import AdvisorGPAWhatIf from './pages/AdvisorGPACalc';
 import StudentGPAWhatIf from './pages/StudentGPACalc';
 
+import SystemSummaryReports from './summaryReports/SystemSummaryReports';
+import GPAByMajor from './summaryReports/GPAByMajor';
+import DepartmentByGPA from './summaryReports/DepartmentByGPA';
+import CoursesGradesBySemester from './summaryReports/CoursesGradesBySemester';
+import InstructorCoursesByMajor from './summaryReports/InstructorCoursesByMajor';
+import StudentsByMajorsCredits from './summaryReports/StudentsByMajorsCredits';
+
 function App() {
   const role = localStorage.getItem('role'); // Retrieve the user's role from local storage
+
+  const getDefaultPath = () => {
+    const role = localStorage.getItem('role');
+    if (role === 'student') return '/student-dashboard';
+    if (role === 'advisor') return '/advisor-dashboard';
+    if (role === 'staff') return '/staff-dashboard';
+    if (role === 'instructor') return '/instructor-dashboard';
+    if (role === 'system_admin') return '/admin-dashboard';
+    return '/login'; // Default to login if role is not found
+  };
+  
 
   return (
     <Router>
       <Routes>
-        {/* Redirect based on role, login is default route */}
-        <Route path="/" element={role ? <Navigate to={`/${role}-dashboard`} replace /> : <Navigate to="/login" replace />} />
+      <Route path="/" element={<Navigate to={getDefaultPath()} replace />} />
+
 
         <Route path="/login" element={<Login />} />
         <Route path="/what-if-calc" element={<GPAWhatIfAnalysis />} />
         <Route path="/student-gpa-what-if" element={<StudentGPAWhatIf />} />
         <Route path="/advisor-gpa-what-if" element={<AdvisorGPAWhatIf />} />
+
+        <Route path="/system-reports" element={<SystemSummaryReports />} />
+        <Route path="/gpa-by-major" element={<GPAByMajor />} />
+        <Route path="/department-by-GPA" element={<DepartmentByGPA />} />
+        <Route path="/courses-grades-by-semester" element={<CoursesGradesBySemester />} />
+        <Route path="/instructor-courses-by-major" element={<InstructorCoursesByMajor />} />
+        <Route path="/students-by-majors-credits" element={<StudentsByMajorsCredits />} />
 
         {/* Protected routes for each dashboard */}
         <Route path="/student-dashboard" element={<StudentDashboard />} />
