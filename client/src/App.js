@@ -2,6 +2,8 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/login';
+import 'bootstrap/dist/css/bootstrap.min.css';
+
 
 import StudentDashboard from './dashboards/StudentDashboard';
 import AdvisorDashboard from './dashboards/AdvisorDashboard';

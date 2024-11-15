@@ -1,7 +1,7 @@
-// src/views/EditInstructor.js
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 function EditInstructor() {
   const [instructorEID, setInstructorEID] = useState('');
@@ -18,11 +18,8 @@ function EditInstructor() {
     departmentid: '',
   });
 
-  const navigate = useNavigate(); // Initialize useNavigate
+  const navigate = useNavigate();
 
-  //const staffEID = localStorage.getItem('staffEID'); // Assume staff EID is stored in local storage
-
-  // Fetch instructor data by EID
   const fetchInstructorData = async () => {
     try {
       const response = await api.get(`/instructors/${instructorEID}`);
@@ -33,19 +30,16 @@ function EditInstructor() {
     }
   };
 
-  // Toggle the form for adding a new instructor
   const toggleAddInstructorForm = () => {
     setShowAddForm(!showAddForm);
-    setInstructorData(null); // Clear current instructor data if showing add form
+    setInstructorData(null);
   };
 
-  // Handle form input changes for adding a new instructor
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewInstructor({ ...newInstructor, [name]: value });
   };
 
-  // Submit new instructor data
   const submitNewInstructor = async (e) => {
     const staffEID = localStorage.getItem('userEID');
     e.preventDefault();
@@ -58,132 +52,154 @@ function EditInstructor() {
     }
   };
 
-    // Handle input changes for instructor data update
-    const handleInputUpdate = (e) => {
-      const { name, value } = e.target;
-      setInstructorData({ ...instructorData, [name]: value });
-    };
-  
-    // Submit updated instructor data
-    const updateInstructorData = async () => {
-      const staffEID = localStorage.getItem('userEID');
-      try {
-        const response = await api.put(`/instructors/${instructorEID}`, {
-          ...instructorData,
-          staffEID, // Include the staff EID for authorization
-        });
-        setMessage(response.data.message);
-      } catch (error) {
-        setMessage(error.response?.data?.error || 'Failed to update instructor');
-      }
-    };
+  const handleInputUpdate = (e) => {
+    const { name, value } = e.target;
+    setInstructorData({ ...instructorData, [name]: value });
+  };
+
+  const updateInstructorData = async () => {
+    const staffEID = localStorage.getItem('userEID');
+    try {
+      const response = await api.put(`/instructors/${instructorEID}`, {
+        ...instructorData,
+        staffEID,
+      });
+      setMessage(response.data.message);
+    } catch (error) {
+      setMessage(error.response?.data?.error || 'Failed to update instructor');
+    }
+  };
 
   return (
-    <div>
-      <h2>View/Edit an Instructor</h2>
+    <div className="container mt-4">
+      <h2 className="text-center mb-4">View/Edit an Instructor</h2>
 
-      <div>
-        {/* Back to Staff Dashboard Button */}
-        <button onClick={() => navigate('/staff-dashboard')}>Back to Staff Dashboard</button>
+      <div className="d-flex justify-content-between mb-3">
+        <button className="btn btn-secondary" onClick={() => navigate('/staff-dashboard')}>
+          Back to Staff Dashboard
+        </button>
+        <button className="btn btn-primary" onClick={toggleAddInstructorForm}>
+          {showAddForm ? 'Cancel Adding New Instructor' : 'Add a New Instructor'}
+        </button>
       </div>
-      <br></br>
-      
-      {/* Input for fetching instructor data */}
-      <input
-        type="text"
-        value={instructorEID}
-        onChange={(e) => setInstructorEID(e.target.value)}
-        placeholder="Enter Instructor EID"
-      />
-      <button onClick={fetchInstructorData}>View/Edit Instructor Data</button>
-      <button onClick={toggleAddInstructorForm}>Add a New Instructor</button>
-      
-      {message && <p>{message}</p>}
-      
-      {/* Display instructor data if available */}
+
+      <div className="mb-4">
+        <input
+          type="text"
+          className="form-control mb-2"
+          value={instructorEID}
+          onChange={(e) => setInstructorEID(e.target.value)}
+          placeholder="Enter Instructor EID"
+        />
+        <button className="btn btn-primary w-100" onClick={fetchInstructorData}>
+          View/Edit Instructor Data
+        </button>
+      </div>
+
+      {message && <div className="alert alert-info">{message}</div>}
+
       {instructorData && (
-        <div>
-          <h3>Instructor Details</h3>
-          <p>EID: {instructorData.eid}</p>
-          <p>First Name: {instructorData.firstname}</p>
-          <p>Last Name: {instructorData.lastname}</p>
-          <p>Email: {instructorData.email}</p>
-          <p>Department ID: {instructorData.departmentid}</p>
-
-          <div>
-            <h3>Edit Instructor Details</h3>
+        <div className="card mb-4">
+          <div className="card-body">
+            <h3 className="card-title">Instructor Details</h3>
             <form>
-              <label>EID:</label>
-              <input type="text" name="eid" value={instructorData.eid} readOnly />
+              <div className="mb-3">
+                <label>EID:</label>
+                <input type="text" name="eid" className="form-control" value={instructorData.eid} readOnly />
+              </div>
 
-              <label>Email:</label>
-              <input
-                type="email"
-                name="email"
-                value={instructorData.email}
-                onChange={handleInputUpdate}
-              />
+              <div className="mb-3">
+                <label>Email:</label>
+                <input
+                  type="email"
+                  name="email"
+                  className="form-control"
+                  value={instructorData.email}
+                  onChange={handleInputUpdate}
+                />
+              </div>
 
-              <label>First Name:</label>
-              <input
-                type="text"
-                name="firstname"
-                value={instructorData.firstname}
-                onChange={handleInputUpdate}
-              />
+              <div className="mb-3">
+                <label>First Name:</label>
+                <input
+                  type="text"
+                  name="firstname"
+                  className="form-control"
+                  value={instructorData.firstname}
+                  onChange={handleInputUpdate}
+                />
+              </div>
 
-              <label>Last Name:</label>
-              <input
-                type="text"
-                name="lastname"
-                value={instructorData.lastname}
-                onChange={handleInputUpdate}
-              />
+              <div className="mb-3">
+                <label>Last Name:</label>
+                <input
+                  type="text"
+                  name="lastname"
+                  className="form-control"
+                  value={instructorData.lastname}
+                  onChange={handleInputUpdate}
+                />
+              </div>
 
-              <label>Department ID:</label>
-              <input
-                type="text"
-                name="departmentid"
-                value={instructorData.departmentid}
-                onChange={handleInputUpdate}
-              />
+              <div className="mb-3">
+                <label>Department ID:</label>
+                <input
+                  type="text"
+                  name="departmentid"
+                  className="form-control"
+                  value={instructorData.departmentid}
+                  onChange={handleInputUpdate}
+                />
+              </div>
 
-              <button type="button" onClick={updateInstructorData}>Save Changes</button>
+              <button type="button" className="btn btn-success w-100" onClick={updateInstructorData}>
+                Save Changes
+              </button>
             </form>
           </div>
-          
         </div>
-
-        
-        //----------
       )}
-      
 
-      {/* Add Instructor Form */}
       {showAddForm && (
-        <div>
-          <h3>Add New Instructor</h3>
-          <form onSubmit={submitNewInstructor}>
-            <label>EID:</label>
-            <input type="text" name="eid" value={newInstructor.eid} onChange={handleInputChange} required />
+        <div className="card mb-4">
+          <div className="card-body">
+            <h3 className="card-title">Add New Instructor</h3>
+            <form onSubmit={submitNewInstructor}>
+              <div className="mb-3">
+                <label>EID:</label>
+                <input type="text" name="eid" className="form-control" value={newInstructor.eid} onChange={handleInputChange} required />
+              </div>
 
-            <label>Password (HashPW):</label>
-            <input type="text" name="hashpw" value={newInstructor.hashpw} onChange={handleInputChange} required />
+              <div className="mb-3">
+                <label>Password (HashPW):</label>
+                <input type="text" name="hashpw" className="form-control" value={newInstructor.hashpw} onChange={handleInputChange} required />
+              </div>
 
-            <label>Email:</label>
-            <input type="email" name="email" value={newInstructor.email} onChange={handleInputChange} required />
+              <div className="mb-3">
+                <label>Email:</label>
+                <input type="email" name="email" className="form-control" value={newInstructor.email} onChange={handleInputChange} required />
+              </div>
 
-            <label>First Name:</label>
-            <input type="text" name="firstname" value={newInstructor.firstname} onChange={handleInputChange} required />
+              <div className="mb-3">
+                <label>First Name:</label>
+                <input type="text" name="firstname" className="form-control" value={newInstructor.firstname} onChange={handleInputChange} required />
+              </div>
 
-            <label>Last Name:</label>
-            <input type="text" name="lastname" value={newInstructor.lastname} onChange={handleInputChange} required />
+              <div className="mb-3">
+                <label>Last Name:</label>
+                <input type="text" name="lastname" className="form-control" value={newInstructor.lastname} onChange={handleInputChange} required />
+              </div>
 
-            <label>Department ID:</label>
-            <input type="text" name="departmentid" value={newInstructor.departmentid} onChange={handleInputChange} required />
+              <div className="mb-3">
+                <label>Department ID:</label>
+                <input type="text" name="departmentid" className="form-control" value={newInstructor.departmentid} onChange={handleInputChange} required />
+              </div>
 
-            <button type="submit">Submit</button>
-          </form>
+              <button type="submit" className="btn btn-primary w-100">
+                Submit
+              </button>
+            </form>
+          </div>
         </div>
       )}
     </div>
