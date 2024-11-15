@@ -1,6 +1,5 @@
 To do:
 
-- advisor needs Department attribute
 - Advisors should only be able to view courses for students or add courses for students within their department
 - staff should be able to edit student data, not just view - FIXED!
 - add course DAYS (MW, TR, F to course attributes)
@@ -10,4 +9,23 @@ To do:
 
 #-------------------------------------------------------------#
 In progress:
-- add bootstrap classes (Amber)
+- add bootstrap classes
+- advisor needs Department attribute - FIXED
+
+
+
+
+
+Notes: 
+- Add to database
+ALTER TABLE Advisors
+ADD COLUMN DepartmentID VARCHAR(8),
+ADD CONSTRAINT fk_advisors_department FOREIGN KEY (DepartmentID) REFERENCES Departments(DepartmentID);
+
+- Add to database
+ALTER TABLE Employees
+ADD COLUMN Role VARCHAR(20
+
+-- Insert a sample system administrator user
+INSERT INTO Employees (EID, HashPW, Email, FirstName, LastName, Role)
+VALUES ('admin001', 'hashed_password_here', 'admin@example.com', 'System', 'Admin', 'system_admin');
