@@ -1,0 +1,13 @@
+To do:
+
+- advisor needs Department attribute
+- Advisors should only be able to view courses for students or add courses for students within their department
+- staff should be able to edit student data, not just view - FIXED!
+- add course DAYS (MW, TR, F to course attributes)
+- edit/add student is completed for staff - BUT there is a bug with editing/adding times
+- staff should be able to DELETE any student, advisor, instructor, or course within their department
+
+
+#-------------------------------------------------------------#
+In progress:
+- add bootstrap classes (Amber)
