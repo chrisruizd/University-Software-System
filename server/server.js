@@ -10,56 +10,35 @@ app.use(express.json())
 
 
 
-// Login route
+// Updated Login route
 app.post("/login", async (req, res) => {
   const { email, password, role } = req.body;
 
   try {
-    if (role === 'student') {
-      // Directly check in the Students table
-      const studentResult = await pool.query(`SELECT * FROM Students WHERE email = $1`, [email]);
-      if (studentResult.rows.length === 0) return res.status(400).json({ error: "User not found in the student role" });
+    const userResult = await pool.query(`SELECT * FROM Employees WHERE email = $1`, [email]);
+    if (userResult.rows.length === 0) return res.status(400).json({ error: "User not found" });
 
-      const student = studentResult.rows[0];
-      //let userID = student.eid;
+    const user = userResult.rows[0];
 
-      // Check password (assuming plaintext for simplicity)
-      if (student.hashpw !== password) return res.status(400).json({ error: "Invalid password" });
+    // Check password (assuming plaintext for simplicity)
+    if (user.hashpw !== password) return res.status(400).json({ error: "Invalid password" });
 
-      // If successful, respond with a success message and role
-      return res.json({ message: "Login successful", role });
-    } else {
-      // Check in the Employees table for advisors, staff, and instructors
-      const employeeResult = await pool.query(`SELECT * FROM Employees WHERE email = $1`, [email]);
-      if (employeeResult.rows.length === 0) return res.status(400).json({ error: "User not found in the selected role" });
-
-      const employee = employeeResult.rows[0];
-      let userEID = employee.eid;
-
-      // Check password (assuming plaintext for simplicity)
-      if (employee.hashpw !== password) return res.status(400).json({ error: "Invalid password" });
-
-      // Role-specific checks for advisor, staff, and instructor
-      if (role === 'advisor') {
-        const advisorResult = await pool.query(`SELECT * FROM Advisors WHERE eid = $1`, [employee.eid]);
-        if (advisorResult.rows.length === 0) return res.status(400).json({ error: "User is not an advisor" });
-      } else if (role === 'staff') {
-        const staffResult = await pool.query(`SELECT * FROM Staff WHERE eid = $1`, [employee.eid]);
-        if (staffResult.rows.length === 0) return res.status(400).json({ error: "User is not staff" });
-      } else if (role === 'instructor') {
-        const instructorResult = await pool.query(`SELECT * FROM Instructors WHERE eid = $1`, [employee.eid]);
-        if (instructorResult.rows.length === 0) return res.status(400).json({ error: "User is not an instructor" });
-      } else {
-        return res.status(400).json({ error: "Invalid role selected" });
-      }
-
-      // If all checks pass, respond with a success message and role
-      return res.json({ message: "Login successful", role, userEID });
+    // Handle system administrator role
+    if (user.role === 'system_admin') {
+      return res.json({ message: "Login successful", role: 'system_admin', userEID: user.eid });
     }
+
+    // Existing role checks (student, advisor, etc.)
+    if (role === 'advisor' || role === 'student' || role === 'instructor') {
+      return res.json({ message: "Login successful", role, userEID: user.eid });
+    }
+
+    return res.status(400).json({ error: "Invalid role selected" });
   } catch (error) {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 
 // Route to get student information
@@ -328,6 +307,49 @@ app.get("/students/:uid", async (req, res) => {
   }
 });
 
+// Update student data
+app.put("/students/:uid", async (req, res) => {
+  const { uid } = req.params;
+  const { hashpw, email, firstname, lastname, majorin, gpa, advised_by, credits } = req.body;
+
+  try {
+    // Validate that the major exists
+    const majorCheck = await pool.query("SELECT 1 FROM Majors WHERE Name = $1", [majorin]);
+    if (majorCheck.rows.length === 0) {
+      return res.status(400).json({ error: "Major does not exist" });
+    }
+
+    // Validate that the advisor exists (if provided)
+    if (advised_by) {
+      const advisorCheck = await pool.query("SELECT 1 FROM Advisors WHERE EID = $1", [advised_by]);
+      if (advisorCheck.rows.length === 0) {
+        return res.status(400).json({ error: "Advisor does not exist" });
+      }
+    }
+
+    // Update student data (assuming all fields have values)
+    await pool.query(
+      `UPDATE Students
+       SET HashPW = $1,
+           Email = $2,
+           FirstName = $3,
+           LastName = $4,
+           MajorIn = $5,
+           GPA = $6,
+           Advised_By = $7,
+           Credits = $8
+       WHERE UID = $9`,
+      [hashpw, email, firstname, lastname, majorin, gpa, advised_by, credits, uid]
+    );
+
+    res.json({ message: "Student data updated successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
 // Add a new student
 app.post("/students", async (req, res) => {
   const {
@@ -540,12 +562,153 @@ app.put("/advisors/:eid", async (req, res) => {
   }
 });
 
+// get course information
+// Get course data by CRN
+app.get("/courses/:crn", async (req, res) => {
+  const { crn } = req.params;
+
+  try {
+    // Query to get course information by CRN
+    const result = await pool.query(
+      `SELECT crn, name, credits, departmentid, semester, year, starttime, endtime
+      FROM Courses
+      WHERE crn = $1;
+      `,
+      [crn]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Course not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Update course data by CRN
+app.put("/courses/:crn", async (req, res) => {
+  const { crn } = req.params;
+  const { name, credits, semester, year, starttime, endtime } = req.body;
+
+  try {
+    // Update the course data in the Courses table
+    await pool.query(
+      `UPDATE Courses
+       SET Name = $1, Credits = $2, Semester = $3, Year = $4, StartTime = $5, EndTime = $6
+       WHERE CRN = $7`,
+      [name, credits, semester, year, starttime, endtime, crn]
+    );
+
+    res.json({ message: "Course updated successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Add a new course
+app.post("/courses", async (req, res) => {
+  const {
+    crn,
+    name,
+    credits,
+    departmentid,
+    semester,
+    year,
+    starttime,
+    endtime
+  } = req.body;
+
+  try {
+    // Check if the department exists
+    const departmentCheck = await pool.query(
+      `SELECT 1 FROM Departments WHERE DepartmentID = $1`,
+      [departmentid]
+    );
+    if (departmentCheck.rows.length === 0) {
+      return res.status(400).json({ error: "Department does not exist" });
+    }
+
+    // Insert the new course into the Courses table
+    await pool.query(
+      `INSERT INTO Courses (CRN, Name, Credits, DepartmentID, Semester, Year, StartTime, EndTime)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [crn, name, credits, departmentid, semester, year, starttime, endtime]
+    );
+
+    res.json({ message: "Course added successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 
 // Department -------------------------------
+// Get department details for the logged-in staff member
+app.get("/department-info", async (req, res) => {
+  const { staffEID } = req.query;
+
+  try {
+    // Get the department ID of the logged-in staff member
+    const staffResult = await pool.query("SELECT DepartmentID FROM Staff WHERE EID = $1", [staffEID]);
+    if (staffResult.rows.length === 0) return res.status(404).json({ error: "Staff not found" });
+
+    const departmentID = staffResult.rows[0].departmentid;
+
+    // Get the department details
+    const departmentResult = await pool.query(
+      `SELECT * FROM Departments WHERE DepartmentID = $1`,
+      [departmentID]
+    );
+    if (departmentResult.rows.length === 0) return res.status(404).json({ error: "Department not found" });
+
+    res.json(departmentResult.rows[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Update department details
+app.put("/edit-department", async (req, res) => {
+  const { staffEID, name, abbreviation, building, office } = req.body;
+
+  try {
+    // Get the department ID of the logged-in staff member
+    const staffResult = await pool.query("SELECT DepartmentID FROM Staff WHERE EID = $1", [staffEID]);
+    if (staffResult.rows.length === 0) return res.status(404).json({ error: "Staff not found" });
+
+    const departmentID = staffResult.rows[0].departmentid;
+
+    // Update the department details
+    await pool.query(
+      `UPDATE Departments
+       SET Name = $1,
+           Abbreviation = $2,
+           Building = $3,
+           Office = $4
+       WHERE DepartmentID = $5`,
+      [name, abbreviation, building, office, departmentID]
+    );
+
+    res.json({ message: "Department details updated successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
 
 
 // Start the server
 const PORT = 4000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+
+
 

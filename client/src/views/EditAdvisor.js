@@ -47,6 +47,14 @@ function EditAdvisor() {
       const response = await api.post('/advisors', { ...newAdvisor, staffEID });
       setMessage(response.data.message);
       setShowAddForm(false);
+      setNewAdvisor({
+        eid: '',
+        hashpw: '',
+        email: '',
+        firstname: '',
+        lastname: '',
+        departmentid: '',
+      });
     } catch (error) {
       setMessage(error.response?.data?.error || 'Failed to add advisor');
     }

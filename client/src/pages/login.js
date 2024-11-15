@@ -24,6 +24,7 @@ function Login() {
       const { userEID } = response.data;
       localStorage.setItem('userEID', userEID);
 
+      // Store additional role-specific identifiers
       if (role === 'staff') {
         localStorage.setItem('staffEID', userEID);
       } else if (role === 'instructor') {
@@ -32,6 +33,7 @@ function Login() {
         localStorage.setItem('studentUID', userEID);
       }
 
+      // Redirect based on the user role
       if (response.data.role === 'student') {
         window.location.href = '/student-dashboard';
       } else if (response.data.role === 'advisor') {
@@ -40,6 +42,8 @@ function Login() {
         window.location.href = '/staff-dashboard';
       } else if (response.data.role === 'instructor') {
         window.location.href = '/instructor-dashboard';
+      } else if (response.data.role === 'system_admin') {
+        window.location.href = '/admin-dashboard';
       }
     } catch (error) {
       setMessage('Login failed: ' + (error.response ? error.response.data.error : error.message));
@@ -90,6 +94,7 @@ function Login() {
               <option value="advisor">Advisor</option>
               <option value="staff">Staff</option>
               <option value="instructor">Instructor</option>
+              <option value="system_admin">System Administrator</option>
             </select>
           </div>
           <button type="submit" className="btn btn-dark w-100">Login</button>

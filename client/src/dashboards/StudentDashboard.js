@@ -99,7 +99,12 @@ function StudentDashboard() {
           </div>
 
           <div className="text-center mt-4">
-            <button className="btn btn-outline-secondary w-100">What-if GPA Calculator</button>
+            <button
+              className="btn btn-outline-secondary w-100"
+              onClick={() => navigate('/student-gpa-what-if')}
+            >
+              What-if GPA Calculator
+            </button>
           </div>
         </div>
       </div>

@@ -165,7 +165,10 @@ function AdvisorDashboard() {
 
           {/* What-if GPA Calculator Button */}
           <div className="text-center mt-4">
-            <button className="btn btn-outline-primary w-100">
+            <button
+              className="btn btn-outline-secondary w-100"
+              onClick={() => navigate('/advisor-gpa-what-if')}
+            >
               What-if GPA Calculator
             </button>
           </div>

@@ -47,10 +47,20 @@ function EditInstructor() {
       const response = await api.post('/instructors', { ...newInstructor, staffEID });
       setMessage(response.data.message);
       setShowAddForm(false);
+      // Reset the form to its initial state
+      setNewInstructor({
+        eid: '',
+        hashpw: '',
+        email: '',
+        firstname: '',
+        lastname: '',
+        departmentid: '',
+      });
     } catch (error) {
       setMessage(error.response?.data?.error || 'Failed to add instructor');
     }
   };
+  
 
   const handleInputUpdate = (e) => {
     const { name, value } = e.target;
