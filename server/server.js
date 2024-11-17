@@ -102,15 +102,16 @@ app.get("/student-info", async (req, res) => {
 
 
 // Route to get advisor information
+// Updated route to get advisor information with department name
 app.get("/advisor-info", async (req, res) => {
   const { email } = req.query;
 
   try {
-    // Join Advisors with Employees based on EID and filter by email
     const advisor = await pool.query(
-      `SELECT e.EID, e.FirstName, e.LastName, e.Email, a.*
+      `SELECT e.EID, e.FirstName, e.LastName, e.Email, a.DepartmentID, d.Name AS DepartmentName
        FROM Employees e
        JOIN Advisors a ON e.EID = a.EID
+       JOIN Departments d ON a.DepartmentID = d.DepartmentID
        WHERE e.Email = $1`, 
       [email]
     );
@@ -121,6 +122,7 @@ app.get("/advisor-info", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 
 // Route to get instructor information

@@ -86,7 +86,7 @@ function AdvisorDashboard() {
             <ul className="list-unstyled mt-3">
               <li><strong>EID:</strong> {advisorInfo.eid}</li>
               <li><strong>Email:</strong> {advisorInfo.email}</li>
-              <li><strong>Department:</strong> {advisorInfo.department}</li>
+              <li><strong>Department:</strong> {advisorInfo.departmentid}</li>
             </ul>
           </div>
           <button className="btn btn-danger w-100 mt-3" onClick={handleLogout}>
