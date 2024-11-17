@@ -9,8 +9,9 @@ To do:
 
 #-------------------------------------------------------------#
 In progress:
-- add bootstrap classes
+- add bootstrap classes - DONE (for existing pages)
 - advisor needs Department attribute - FIXED
+
 
 
 
@@ -24,7 +25,7 @@ ADD CONSTRAINT fk_advisors_department FOREIGN KEY (DepartmentID) REFERENCES Depa
 
 - Add to database
 ALTER TABLE Employees
-ADD COLUMN Role VARCHAR(20
+ADD COLUMN Role VARCHAR(20)
 
 -- Insert a sample system administrator user
 INSERT INTO Employees (EID, HashPW, Email, FirstName, LastName, Role)

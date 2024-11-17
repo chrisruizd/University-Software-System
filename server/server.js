@@ -533,11 +533,12 @@ app.get("/advisors/:eid", async (req, res) => {
   const { eid } = req.params;
 
   try {
+    // Corrected query
     const result = await pool.query(
       `SELECT e.*, a.DepartmentID
-       FROM Employees e
-       JOIN Advises a ON e.EID = a.EID
-       WHERE e.EID = $1`,
+      FROM Employees e
+      JOIN Advisors a ON e.EID = a.EID
+      WHERE e.EID = $1`,
       [eid]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: "Advisor not found" });
