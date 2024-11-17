@@ -747,38 +747,73 @@ app.put("/advisors/:eid", async (req, res) => {
 });
 
 // get course information
-// Get course data by CRN
+// Get course data by CRN (restricted to staff's department)
 app.get("/courses/:crn", async (req, res) => {
   const { crn } = req.params;
+  const { staffEID } = req.query;
 
   try {
-    // Query to get course information by CRN
+    // Get the department ID of the staff member
+    const staffResult = await pool.query(
+      "SELECT DepartmentID FROM Staff WHERE EID = $1",
+      [staffEID]
+    );
+
+    if (staffResult.rows.length === 0) {
+      return res.status(403).json({ error: "Unauthorized staff member" });
+    }
+
+    const staffDepartmentID = staffResult.rows[0].departmentid;
+
+    // Fetch the course data and check if it belongs to the staff's department
     const result = await pool.query(
       `SELECT crn, name, credits, departmentid, semester, year, starttime, endtime
-      FROM Courses
-      WHERE crn = $1;
-      `,
-      [crn]
+       FROM Courses
+       WHERE crn = $1 AND departmentid = $2`,
+      [crn, staffDepartmentID]
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Course not found" });
+      return res.status(404).json({ error: "Course not found or not in your department" });
     }
 
     res.json(result.rows[0]);
   } catch (error) {
-    console.error(error);
+    console.error("Failed to fetch course data:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Update course data by CRN
+
+// Update course data by CRN (restricted to staff's department)
 app.put("/courses/:crn", async (req, res) => {
   const { crn } = req.params;
-  const { name, credits, semester, year, starttime, endtime } = req.body;
+  const { name, credits, semester, year, starttime, endtime, staffEID } = req.body;
 
   try {
-    // Update the course data in the Courses table
+    // Get the department ID of the staff member
+    const staffResult = await pool.query(
+      "SELECT DepartmentID FROM Staff WHERE EID = $1",
+      [staffEID]
+    );
+
+    if (staffResult.rows.length === 0) {
+      return res.status(403).json({ error: "Unauthorized staff member" });
+    }
+
+    const staffDepartmentID = staffResult.rows[0].departmentid;
+
+    // Ensure the course belongs to the staff's department
+    const departmentCheck = await pool.query(
+      "SELECT 1 FROM Courses WHERE CRN = $1 AND DepartmentID = $2",
+      [crn, staffDepartmentID]
+    );
+
+    if (departmentCheck.rows.length === 0) {
+      return res.status(403).json({ error: "You are not authorized to edit this course" });
+    }
+
+    // Update the course data
     await pool.query(
       `UPDATE Courses
        SET Name = $1, Credits = $2, Semester = $3, Year = $4, StartTime = $5, EndTime = $6
@@ -788,12 +823,13 @@ app.put("/courses/:crn", async (req, res) => {
 
     res.json({ message: "Course updated successfully" });
   } catch (error) {
-    console.error(error);
+    console.error("Failed to update course data:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Add a new course
+
+// Add a new course (restricted to staff's department)
 app.post("/courses", async (req, res) => {
   const {
     crn,
@@ -803,17 +839,26 @@ app.post("/courses", async (req, res) => {
     semester,
     year,
     starttime,
-    endtime
+    endtime,
+    staffEID
   } = req.body;
 
   try {
-    // Check if the department exists
-    const departmentCheck = await pool.query(
-      `SELECT 1 FROM Departments WHERE DepartmentID = $1`,
-      [departmentid]
+    // Get the department ID of the staff member
+    const staffResult = await pool.query(
+      "SELECT DepartmentID FROM Staff WHERE EID = $1",
+      [staffEID]
     );
-    if (departmentCheck.rows.length === 0) {
-      return res.status(400).json({ error: "Department does not exist" });
+
+    if (staffResult.rows.length === 0) {
+      return res.status(403).json({ error: "Unauthorized staff member" });
+    }
+
+    const staffDepartmentID = staffResult.rows[0].departmentid;
+
+    // Ensure the new course belongs to the staff's department
+    if (departmentid !== staffDepartmentID) {
+      return res.status(403).json({ error: "You can only add courses to your own department" });
     }
 
     // Insert the new course into the Courses table
@@ -825,10 +870,11 @@ app.post("/courses", async (req, res) => {
 
     res.json({ message: "Course added successfully" });
   } catch (error) {
-    console.error(error);
+    console.error("Failed to add course:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 
 // Department -------------------------------
