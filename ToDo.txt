@@ -1,8 +1,10 @@
 To do:
 
 - add course DAYS (MW, TR, F to course attributes)
+- AFTER DOING THE ABOVE (need course days), advisors should not be allowed to add courses for students that conflict with other courses in their schedule
 - edit/add student is completed for staff - BUT there is a bug with editing/adding times
 - need to add logs for sys admin!!!
+
 
 
 DONE:
