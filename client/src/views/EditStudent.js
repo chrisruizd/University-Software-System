@@ -25,14 +25,19 @@ function EditStudent() {
 
   // Fetch student data
   const fetchStudentData = async () => {
+    const staffEID = localStorage.getItem('staffEID'); // Retrieve staff EID from localStorage or context
+
     try {
-      const response = await api.get(`/students/${studentUID}`);
+      const response = await api.get(`/students/${studentUID}`, {
+        params: { staffEID },
+      });
       setStudentData(response.data);
       setMessage('');
     } catch (error) {
-      setMessage('Failed to fetch student data');
+      setMessage(error.response?.data?.error || 'Failed to fetch student data');
     }
   };
+
 
   // Toggle the form for adding a new student
   const toggleAddStudentForm = () => {
@@ -50,11 +55,13 @@ function EditStudent() {
     }
   };
 
-  // Submit new student data
+  // submit new student
   const submitNewStudent = async (e) => {
     e.preventDefault();
+    const staffEID = localStorage.getItem('staffEID'); // Retrieve the staff EID from localStorage
+  
     try {
-      const response = await api.post('/students', newStudent);
+      const response = await api.post('/students', { ...newStudent, staffEID });
       setMessage(response.data.message);
       setShowAddForm(false);
       setNewStudent({
@@ -72,16 +79,44 @@ function EditStudent() {
       setMessage(error.response?.data?.error || 'Failed to add student');
     }
   };
+  
 
   // Update existing student data
   const updateStudentData = async () => {
+    const staffEID = localStorage.getItem('staffEID'); // Retrieve staff EID from localStorage or context
+
     try {
-      const response = await api.put(`/students/${studentData.uid}`, studentData);
+      const response = await api.put(`/students/${studentData.uid}`, {
+        ...studentData,
+        staffEID,
+      });
       setMessage(response.data.message);
     } catch (error) {
       setMessage(error.response?.data?.error || 'Failed to update student');
     }
   };
+
+  // Delete student data
+  const deleteStudentData = async () => {
+    const staffEID = localStorage.getItem('staffEID'); // Retrieve staff EID from localStorage
+
+    if (!window.confirm("Are you sure you want to delete this student? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      const response = await api.delete(`/students/${studentData.uid}`, {
+        data: { staffEID },
+      });
+      setMessage(response.data.message);
+      setStudentData(null); // Clear the student data after deletion
+      setStudentUID(''); // Reset the input field
+    } catch (error) {
+      setMessage(error.response?.data?.error || 'Failed to delete student');
+    }
+  };
+
+
 
   return (
     <div className="container mt-4">
@@ -212,6 +247,13 @@ function EditStudent() {
 
               <button type="button" className="btn btn-success w-100" onClick={updateStudentData}>
                 Save Changes
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger w-100 mt-3"
+                onClick={deleteStudentData}
+              >
+                Delete Student
               </button>
             </form>
           </div>
