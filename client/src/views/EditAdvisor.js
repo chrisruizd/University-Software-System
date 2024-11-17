@@ -21,14 +21,18 @@ function EditAdvisor() {
   const navigate = useNavigate();
 
   const fetchAdvisorData = async () => {
+    const staffEID = localStorage.getItem('userEID');
     try {
-      const response = await api.get(`/advisors/${advisorEID}`);
+      const response = await api.get(`/advisors/${advisorEID}`, {
+        params: { staffEID },
+      });
       setAdvisorData(response.data);
       setMessage('');
     } catch (error) {
-      setMessage('Failed to fetch advisor data');
+      setMessage('Failed to fetch advisor data or unauthorized access');
     }
   };
+  
 
   const toggleAddAdvisorForm = () => {
     setShowAddForm(!showAddForm);
@@ -59,6 +63,7 @@ function EditAdvisor() {
       setMessage(error.response?.data?.error || 'Failed to add advisor');
     }
   };
+  
 
   const handleInputUpdate = (e) => {
     const { name, value } = e.target;
@@ -68,12 +73,16 @@ function EditAdvisor() {
   const updateAdvisorData = async () => {
     const staffEID = localStorage.getItem('userEID');
     try {
-      const response = await api.put(`/advisors/${advisorEID}`, { ...advisorData, staffEID });
+      const response = await api.put(`/advisors/${advisorEID}`, {
+        ...advisorData,
+        staffEID,
+      });
       setMessage(response.data.message);
     } catch (error) {
       setMessage(error.response?.data?.error || 'Failed to update advisor');
     }
   };
+  
 
   return (
     <div className="container mt-4">

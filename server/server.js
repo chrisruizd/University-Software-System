@@ -665,31 +665,50 @@ app.put("/instructors/:eid", async (req, res) => {
 
 // server.js
 
-// Get advisor data by EID
+// Get advisor data by EID (restricted by staff department)
 app.get("/advisors/:eid", async (req, res) => {
   const { eid } = req.params;
+  const staffEID = req.query.staffEID;
 
   try {
-    // Corrected query
+    // Check the staff's department
+    const staffDepartment = await pool.query(
+      `SELECT DepartmentID FROM Staff WHERE EID = $1`,
+      [staffEID]
+    );
+
+    if (staffDepartment.rows.length === 0) {
+      return res.status(403).json({ error: "Unauthorized access" });
+    }
+
+    const departmentID = staffDepartment.rows[0].departmentid;
+
+    // Fetch advisor data only if they belong to the same department
     const result = await pool.query(
       `SELECT e.*, a.DepartmentID
-      FROM Employees e
-      JOIN Advisors a ON e.EID = a.EID
-      WHERE e.EID = $1`,
-      [eid]
+       FROM Employees e
+       JOIN Advisors a ON e.EID = a.EID
+       WHERE e.EID = $1 AND a.DepartmentID = $2`,
+      [eid, departmentID]
     );
-    if (result.rows.length === 0) return res.status(404).json({ error: "Advisor not found" });
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Advisor not found or unauthorized access" });
+    }
+
     res.json(result.rows[0]);
   } catch (error) {
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Add a new advisor
+
+// Add a new advisor (restricted by staff department)
 app.post("/advisors", async (req, res) => {
   const { eid, hashpw, email, firstname, lastname, departmentid, staffEID } = req.body;
 
   try {
+    // Verify that the staff and department match
     const staffCheck = await pool.query(
       `SELECT 1 FROM Staff WHERE EID = $1 AND DepartmentID = $2`,
       [staffEID, departmentid]
@@ -698,6 +717,7 @@ app.post("/advisors", async (req, res) => {
       return res.status(403).json({ error: "Unauthorized to add advisor for this department" });
     }
 
+    // Insert into Employees and Advisors tables
     await pool.query(
       `INSERT INTO Employees (EID, HashPW, Email, FirstName, LastName) VALUES ($1, $2, $3, $4, $5)`,
       [eid, hashpw, email, firstname, lastname]
@@ -717,12 +737,14 @@ app.post("/advisors", async (req, res) => {
   }
 });
 
-// Update advisor data
+
+// Update advisor data (restricted by staff department)
 app.put("/advisors/:eid", async (req, res) => {
   const { eid } = req.params;
   const { email, firstname, lastname, departmentid, staffEID } = req.body;
 
   try {
+    // Verify staff's department matches the advisor's department
     const staffCheck = await pool.query(
       `SELECT 1 FROM Staff WHERE EID = $1 AND DepartmentID = $2`,
       [staffEID, departmentid]
@@ -731,6 +753,7 @@ app.put("/advisors/:eid", async (req, res) => {
       return res.status(403).json({ error: "Unauthorized to update advisor for this department" });
     }
 
+    // Update Employees and Advises tables
     await pool.query(
       `UPDATE Employees SET Email = $1, FirstName = $2, LastName = $3 WHERE EID = $4`,
       [email, firstname, lastname, eid]
@@ -745,6 +768,7 @@ app.put("/advisors/:eid", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 // get course information
 // Get course data by CRN (restricted to staff's department)
