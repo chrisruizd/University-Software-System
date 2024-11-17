@@ -558,23 +558,44 @@ app.post("/students", async (req, res) => {
 
     //Instructor
 // Get instructor data by EID
+// Get instructor data by EID (restricted to staff's department)
 app.get("/instructors/:eid", async (req, res) => {
   const { eid } = req.params;
+  const { staffEID } = req.query; // Include staffEID in the query parameters
 
   try {
+    // Step 1: Get the department of the staff member
+    const staffCheck = await pool.query(
+      "SELECT DepartmentID FROM Staff WHERE EID = $1",
+      [staffEID]
+    );
+
+    if (staffCheck.rows.length === 0) {
+      return res.status(403).json({ error: "Unauthorized staff member" });
+    }
+
+    const staffDepartmentID = staffCheck.rows[0].departmentid;
+
+    // Step 2: Get the instructor data and verify the department
     const result = await pool.query(
       `SELECT e.*, i.DepartmentID
        FROM Employees e
        JOIN Instructors i ON e.EID = i.EID
-       WHERE e.EID = $1`,
-      [eid]
+       WHERE e.EID = $1 AND i.DepartmentID = $2`,
+      [eid, staffDepartmentID]
     );
-    if (result.rows.length === 0) return res.status(404).json({ error: "Instructor not found" });
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Instructor not found or not in your department" });
+    }
+
     res.json(result.rows[0]);
   } catch (error) {
+    console.error("Failed to fetch instructor data:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 // Add a new instructor
 app.post("/instructors", async (req, res) => {
   const { eid, hashpw, email, firstname, lastname, departmentid, staffEID } = req.body;
