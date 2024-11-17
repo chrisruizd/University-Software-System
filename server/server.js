@@ -381,13 +381,13 @@ app.get("/students/:uid", async (req, res) => {
 });
 
 
-// Update student data with staff department validation
+// Update student data with staff and advisor validation
 app.put("/students/:uid", async (req, res) => {
   const { uid } = req.params;
   const { hashpw, email, firstname, lastname, majorin, gpa, advised_by, credits, staffEID } = req.body;
 
   try {
-    // Get the department of the logged-in staff member
+    // Step 1: Get the department of the logged-in staff member
     const staffDepartmentResult = await pool.query(
       `SELECT DepartmentID FROM Staff WHERE EID = $1`,
       [staffEID]
@@ -399,25 +399,38 @@ app.put("/students/:uid", async (req, res) => {
 
     const staffDepartmentID = staffDepartmentResult.rows[0].departmentid;
 
-    // Check if the major belongs to the same department as the staff
+    // Step 2: Check if the major belongs to the same department as the staff
     const majorCheck = await pool.query(
-      `SELECT 1 FROM Majors WHERE Name = $1 AND DepartmentID = $2`,
-      [majorin, staffDepartmentID]
+      `SELECT DepartmentID FROM Majors WHERE Name = $1`,
+      [majorin]
     );
 
     if (majorCheck.rows.length === 0) {
+      return res.status(400).json({ error: "Major does not exist" });
+    }
+
+    const majorDepartmentID = majorCheck.rows[0].departmentid;
+
+    if (staffDepartmentID !== majorDepartmentID) {
       return res.status(403).json({ error: "Unauthorized to update student data" });
     }
 
-    // Validate that the advisor exists (if provided)
+    // Step 3: Validate that the advisor belongs to the same department as the major (if provided)
     if (advised_by) {
-      const advisorCheck = await pool.query("SELECT 1 FROM Advisors WHERE EID = $1", [advised_by]);
+      const advisorCheck = await pool.query(
+        `SELECT a.EID
+         FROM Advisors a
+         JOIN Employees e ON a.EID = e.EID
+         JOIN Departments d ON a.DepartmentID = d.DepartmentID
+         WHERE a.EID = $1 AND d.DepartmentID = $2`,
+        [advised_by, majorDepartmentID]
+      );
       if (advisorCheck.rows.length === 0) {
-        return res.status(400).json({ error: "Advisor does not exist" });
+        return res.status(400).json({ error: "Advisor does not belong to the same department as the student's major" });
       }
     }
 
-    // Update student data
+    // Step 4: Update student data
     await pool.query(
       `UPDATE Students
        SET HashPW = $1,
@@ -434,10 +447,11 @@ app.put("/students/:uid", async (req, res) => {
 
     res.json({ message: "Student data updated successfully" });
   } catch (error) {
-    console.error(error);
+    console.error("Failed to update student:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 // staff delete student
 // Route to delete a student (restricted by department)
@@ -489,7 +503,7 @@ app.delete("/students/:uid", async (req, res) => {
 
 
 
-// Add a new student (restricted by department)
+// Add a new student (restricted by department and advisor validation)
 app.post("/students", async (req, res) => {
   const {
     uid,
@@ -532,11 +546,18 @@ app.post("/students", async (req, res) => {
       return res.status(403).json({ error: "Staff not authorized to add a student for this major" });
     }
 
-    // Step 4: Check if the advisor exists (if provided)
+    // Step 4: Validate that the advisor belongs to the same department as the major (if provided)
     if (advised_by) {
-      const advisorCheck = await pool.query("SELECT 1 FROM Advisors WHERE EID = $1", [advised_by]);
+      const advisorCheck = await pool.query(
+        `SELECT a.EID
+         FROM Advisors a
+         JOIN Employees e ON a.EID = e.EID
+         JOIN Departments d ON a.DepartmentID = d.DepartmentID
+         WHERE a.EID = $1 AND d.DepartmentID = $2`,
+        [advised_by, majorDepartmentID]
+      );
       if (advisorCheck.rows.length === 0) {
-        return res.status(400).json({ error: "Advisor does not exist" });
+        return res.status(400).json({ error: "Advisor does not belong to the same department as the student's major" });
       }
     }
 
@@ -553,6 +574,7 @@ app.post("/students", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 
 

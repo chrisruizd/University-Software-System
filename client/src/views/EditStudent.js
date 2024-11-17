@@ -55,7 +55,7 @@ function EditStudent() {
     }
   };
 
-  // submit new student
+  // add new student
   const submitNewStudent = async (e) => {
     e.preventDefault();
     const staffEID = localStorage.getItem('staffEID'); // Retrieve the staff EID from localStorage
@@ -80,11 +80,12 @@ function EditStudent() {
     }
   };
   
+  
 
   // Update existing student data
   const updateStudentData = async () => {
-    const staffEID = localStorage.getItem('staffEID'); // Retrieve staff EID from localStorage or context
-
+    const staffEID = localStorage.getItem('staffEID'); // Retrieve staff EID from localStorage
+  
     try {
       const response = await api.put(`/students/${studentData.uid}`, {
         ...studentData,
@@ -95,6 +96,7 @@ function EditStudent() {
       setMessage(error.response?.data?.error || 'Failed to update student');
     }
   };
+  
 
   // Delete student data
   const deleteStudentData = async () => {
