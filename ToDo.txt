@@ -1,16 +1,23 @@
 To do:
 
-- Advisors should only be able to view courses for students or add courses for students within their department
-- staff should be able to edit student data, not just view - FIXED!
 - add course DAYS (MW, TR, F to course attributes)
+- AFTER DOING THE ABOVE (need course days), advisors should not be allowed to add courses for students that conflict with other courses in their schedule
 - edit/add student is completed for staff - BUT there is a bug with editing/adding times
-- staff should be able to DELETE any student, advisor, instructor, or course within their department
+- need to add logs for sys admin!!!
+
+
+
+DONE:
+- staff should be able to DELETE any student, advisor, instructor, or course within their department - DONE!
+- staff should be able to edit student data, not just view - FIXED!
+- Advisors should only be able to view courses for students or add courses for students within their department - DONE!
 
 
 #-------------------------------------------------------------#
 In progress:
-- add bootstrap classes
+- add bootstrap classes - DONE (for existing pages)
 - advisor needs Department attribute - FIXED
+
 
 
 
@@ -24,7 +31,7 @@ ADD CONSTRAINT fk_advisors_department FOREIGN KEY (DepartmentID) REFERENCES Depa
 
 - Add to database
 ALTER TABLE Employees
-ADD COLUMN Role VARCHAR(20
+ADD COLUMN Role VARCHAR(20)
 
 -- Insert a sample system administrator user
 INSERT INTO Employees (EID, HashPW, Email, FirstName, LastName, Role)

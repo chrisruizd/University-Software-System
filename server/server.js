@@ -102,15 +102,16 @@ app.get("/student-info", async (req, res) => {
 
 
 // Route to get advisor information
+// Updated route to get advisor information with department name
 app.get("/advisor-info", async (req, res) => {
   const { email } = req.query;
 
   try {
-    // Join Advisors with Employees based on EID and filter by email
     const advisor = await pool.query(
-      `SELECT e.EID, e.FirstName, e.LastName, e.Email, a.*
+      `SELECT e.EID, e.FirstName, e.LastName, e.Email, a.DepartmentID, d.Name AS DepartmentName
        FROM Employees e
        JOIN Advisors a ON e.EID = a.EID
+       JOIN Departments d ON a.DepartmentID = d.DepartmentID
        WHERE e.Email = $1`, 
       [email]
     );
@@ -121,6 +122,7 @@ app.get("/advisor-info", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 
 // Route to get instructor information
@@ -169,6 +171,7 @@ app.get("/staff-info", async (req, res) => {
 
   
 // Route to get enrolled courses for a student
+// for student dashboard
 app.get("/student-courses", async (req, res) => {
   const { email } = req.query;
 
@@ -229,8 +232,24 @@ app.get("/instructor-courses", async (req, res) => {
 // Route to get current courses for a student
 app.get("/student-courses/:uid", async (req, res) => {
   const { uid } = req.params;
+  const { advisorEID } = req.query;
 
   try {
+    // Check if the advisor and student belong to the same department
+    const departmentCheck = await pool.query(
+      `SELECT 1
+       FROM Advisors a
+       JOIN Advises adv ON a.EID = adv.EID
+       JOIN Students s ON s.UID = $1
+       JOIN Majors m ON s.MajorIn = m.Name
+       WHERE a.EID = $2 AND m.DepartmentID = adv.DepartmentID`,
+      [uid, advisorEID]
+    );
+
+    if (departmentCheck.rows.length === 0) {
+      return res.status(403).json({ error: "Advisor not authorized to view courses for this student" });
+    }
+
     // Query to get the student's enrolled courses
     const coursesResult = await pool.query(
       `SELECT c.Name, c.CRN, c.Credits, c.Semester, c.Year, e.Grade, e.Completed
@@ -240,18 +259,18 @@ app.get("/student-courses/:uid", async (req, res) => {
       [uid]
     );
 
-    // Return the enrolled courses
     res.json(coursesResult.rows);
   } catch (error) {
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
+
 app.post("/add-course", async (req, res) => {
   const { advisorEID, studentUID, crn } = req.body;
 
   try {
-    // Step 1: Check if advisor and student belong to the same department
+    // Check if the advisor and student belong to the same department
     const departmentCheck = await pool.query(
       `SELECT 1
        FROM Advisors a
@@ -266,7 +285,7 @@ app.post("/add-course", async (req, res) => {
       return res.status(403).json({ error: "Advisor not authorized to add courses for this student" });
     }
 
-    // Step 2: Check if the student is already enrolled in the course
+    // Check if the student is already enrolled in the course
     const enrollmentCheck = await pool.query(
       `SELECT 1 FROM Enrolled_In WHERE UID = $1 AND CRN = $2`,
       [studentUID, crn]
@@ -276,7 +295,7 @@ app.post("/add-course", async (req, res) => {
       return res.status(400).json({ error: "Student is already enrolled in this course" });
     }
 
-    // Step 3: Add the course to the student's enrollment
+    // Add the course to the student's enrollment
     await pool.query(
       `INSERT INTO Enrolled_In (UID, CRN, Completed)
        VALUES ($1, $2, FALSE)`,
@@ -285,10 +304,10 @@ app.post("/add-course", async (req, res) => {
 
     res.json({ message: "Course added successfully" });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 
 
@@ -297,7 +316,7 @@ app.post("/drop-course", async (req, res) => {
   const { advisorEID, studentUID, crn } = req.body;
 
   try {
-    // Step 1: Check if advisor and student belong to the same department
+    // Check if the advisor and student belong to the same department
     const departmentCheck = await pool.query(
       `SELECT 1
        FROM Advisors a
@@ -312,7 +331,7 @@ app.post("/drop-course", async (req, res) => {
       return res.status(403).json({ error: "Advisor not authorized to drop courses for this student" });
     }
 
-    // Step 2: Check if the student is currently enrolled in the course
+    // Check if the student is currently enrolled in the course
     const enrollmentCheck = await pool.query(
       `SELECT 1 FROM Enrolled_In WHERE UID = $1 AND CRN = $2`,
       [studentUID, crn]
@@ -322,7 +341,7 @@ app.post("/drop-course", async (req, res) => {
       return res.status(400).json({ error: "Student is not currently enrolled in this course" });
     }
 
-    // Step 3: Drop the course for the student
+    // Drop the course for the student
     await pool.query(
       `DELETE FROM Enrolled_In WHERE UID = $1 AND CRN = $2`,
       [studentUID, crn]
@@ -330,50 +349,105 @@ app.post("/drop-course", async (req, res) => {
 
     res.json({ message: "Course dropped successfully" });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 
 //-------------Staff Actions---------------------------------------
 
 
     //Sudent
-// Get student data by UID
+// Get student data by UID with staff department validation
 app.get("/students/:uid", async (req, res) => {
   const { uid } = req.params;
-  
+  const { staffEID } = req.query;
+
   try {
-    const result = await pool.query("SELECT * FROM Students WHERE UID = $1", [uid]);
-    if (result.rows.length === 0) return res.status(404).json({ error: "Student not found" });
+    // Get the department of the logged-in staff member
+    const staffDepartmentResult = await pool.query(
+      `SELECT DepartmentID FROM Staff WHERE EID = $1`,
+      [staffEID]
+    );
+
+    if (staffDepartmentResult.rows.length === 0) {
+      return res.status(404).json({ error: "Staff not found" });
+    }
+
+    const staffDepartmentID = staffDepartmentResult.rows[0].departmentid;
+
+    // Get student data and check if the major belongs to the same department
+    const result = await pool.query(
+      `SELECT s.*, m.DepartmentID
+       FROM Students s
+       JOIN Majors m ON s.MajorIn = m.Name
+       WHERE s.UID = $1 AND m.DepartmentID = $2`,
+      [uid, staffDepartmentID]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(403).json({ error: "Unauthorized to view student data or student does not exist" });
+    }
+
     res.json(result.rows[0]);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Update student data
+
+// Update student data with staff and advisor validation
 app.put("/students/:uid", async (req, res) => {
   const { uid } = req.params;
-  const { hashpw, email, firstname, lastname, majorin, gpa, advised_by, credits } = req.body;
+  const { hashpw, email, firstname, lastname, majorin, gpa, advised_by, credits, staffEID } = req.body;
 
   try {
-    // Validate that the major exists
-    const majorCheck = await pool.query("SELECT 1 FROM Majors WHERE Name = $1", [majorin]);
+    // Step 1: Get the department of the logged-in staff member
+    const staffDepartmentResult = await pool.query(
+      `SELECT DepartmentID FROM Staff WHERE EID = $1`,
+      [staffEID]
+    );
+
+    if (staffDepartmentResult.rows.length === 0) {
+      return res.status(404).json({ error: "Staff not found" });
+    }
+
+    const staffDepartmentID = staffDepartmentResult.rows[0].departmentid;
+
+    // Step 2: Check if the major belongs to the same department as the staff
+    const majorCheck = await pool.query(
+      `SELECT DepartmentID FROM Majors WHERE Name = $1`,
+      [majorin]
+    );
+
     if (majorCheck.rows.length === 0) {
       return res.status(400).json({ error: "Major does not exist" });
     }
 
-    // Validate that the advisor exists (if provided)
+    const majorDepartmentID = majorCheck.rows[0].departmentid;
+
+    if (staffDepartmentID !== majorDepartmentID) {
+      return res.status(403).json({ error: "Unauthorized to update student data" });
+    }
+
+    // Step 3: Validate that the advisor belongs to the same department as the major (if provided)
     if (advised_by) {
-      const advisorCheck = await pool.query("SELECT 1 FROM Advisors WHERE EID = $1", [advised_by]);
+      const advisorCheck = await pool.query(
+        `SELECT a.EID
+         FROM Advisors a
+         JOIN Employees e ON a.EID = e.EID
+         JOIN Departments d ON a.DepartmentID = d.DepartmentID
+         WHERE a.EID = $1 AND d.DepartmentID = $2`,
+        [advised_by, majorDepartmentID]
+      );
       if (advisorCheck.rows.length === 0) {
-        return res.status(400).json({ error: "Advisor does not exist" });
+        return res.status(400).json({ error: "Advisor does not belong to the same department as the student's major" });
       }
     }
 
-    // Update student data (assuming all fields have values)
+    // Step 4: Update student data
     await pool.query(
       `UPDATE Students
        SET HashPW = $1,
@@ -390,13 +464,63 @@ app.put("/students/:uid", async (req, res) => {
 
     res.json({ message: "Student data updated successfully" });
   } catch (error) {
-    console.error(error);
+    console.error("Failed to update student:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
 
-// Add a new student
+// staff delete student
+// Route to delete a student (restricted by department)
+app.delete("/students/:uid", async (req, res) => {
+  const { uid } = req.params;
+  const { staffEID } = req.body;
+
+  try {
+    // Step 1: Get the department of the staff member
+    const staffDeptResult = await pool.query(
+      "SELECT DepartmentID FROM Staff WHERE EID = $1",
+      [staffEID]
+    );
+    if (staffDeptResult.rows.length === 0) {
+      return res.status(403).json({ error: "Unauthorized staff member" });
+    }
+
+    const staffDepartmentID = staffDeptResult.rows[0].departmentid;
+
+    // Step 2: Get the department of the student's major
+    const studentDeptResult = await pool.query(
+      `SELECT m.DepartmentID
+       FROM Students s
+       JOIN Majors m ON s.MajorIn = m.Name
+       WHERE s.UID = $1`,
+      [uid]
+    );
+    if (studentDeptResult.rows.length === 0) {
+      return res.status(404).json({ error: "Student not found" });
+    }
+
+    const studentDepartmentID = studentDeptResult.rows[0].departmentid;
+
+    // Step 3: Check if the staff and student departments match
+    if (staffDepartmentID !== studentDepartmentID) {
+      return res.status(403).json({ error: "Staff not authorized to delete this student" });
+    }
+
+    // Step 4: Delete the student from the database
+    await pool.query("DELETE FROM Students WHERE UID = $1", [uid]);
+
+    res.json({ message: "Student deleted successfully" });
+  } catch (error) {
+    console.error("Failed to delete student:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+
+
+// Add a new student (restricted by department and advisor validation)
 app.post("/students", async (req, res) => {
   const {
     uid,
@@ -408,24 +532,53 @@ app.post("/students", async (req, res) => {
     gpa,
     advised_by,
     credits,
+    staffEID,
   } = req.body;
 
   try {
-    // Check if the major exists
-    const majorCheck = await pool.query("SELECT 1 FROM Majors WHERE Name = $1", [majorin]);
+    // Step 1: Verify that the major exists
+    const majorCheck = await pool.query(
+      "SELECT DepartmentID FROM Majors WHERE Name = $1",
+      [majorin]
+    );
     if (majorCheck.rows.length === 0) {
       return res.status(400).json({ error: "Major does not exist" });
     }
 
-    // Check if the advisor exists (if provided)
+    const majorDepartmentID = majorCheck.rows[0].departmentid;
+
+    // Step 2: Verify that the staff member exists and get their department
+    const staffCheck = await pool.query(
+      "SELECT DepartmentID FROM Staff WHERE EID = $1",
+      [staffEID]
+    );
+    if (staffCheck.rows.length === 0) {
+      return res.status(403).json({ error: "Unauthorized staff member" });
+    }
+
+    const staffDepartmentID = staffCheck.rows[0].departmentid;
+
+    // Step 3: Check if the staff member's department matches the major's department
+    if (staffDepartmentID !== majorDepartmentID) {
+      return res.status(403).json({ error: "Staff not authorized to add a student for this major" });
+    }
+
+    // Step 4: Validate that the advisor belongs to the same department as the major (if provided)
     if (advised_by) {
-      const advisorCheck = await pool.query("SELECT 1 FROM Advisors WHERE EID = $1", [advised_by]);
+      const advisorCheck = await pool.query(
+        `SELECT a.EID
+         FROM Advisors a
+         JOIN Employees e ON a.EID = e.EID
+         JOIN Departments d ON a.DepartmentID = d.DepartmentID
+         WHERE a.EID = $1 AND d.DepartmentID = $2`,
+        [advised_by, majorDepartmentID]
+      );
       if (advisorCheck.rows.length === 0) {
-        return res.status(400).json({ error: "Advisor does not exist" });
+        return res.status(400).json({ error: "Advisor does not belong to the same department as the student's major" });
       }
     }
 
-    // Insert the new student into the Students table
+    // Step 5: Insert the new student into the Students table
     await pool.query(
       `INSERT INTO Students (UID, HashPW, Email, FirstName, LastName, MajorIn, GPA, Advised_By, Credits)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
@@ -434,31 +587,54 @@ app.post("/students", async (req, res) => {
 
     res.json({ message: "Student added successfully" });
   } catch (error) {
-    console.error(error);
+    console.error("Failed to add student:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+
 
 
     //Instructor
 // Get instructor data by EID
+// Get instructor data by EID (restricted to staff's department)
 app.get("/instructors/:eid", async (req, res) => {
   const { eid } = req.params;
+  const { staffEID } = req.query; // Include staffEID in the query parameters
 
   try {
+    // Step 1: Get the department of the staff member
+    const staffCheck = await pool.query(
+      "SELECT DepartmentID FROM Staff WHERE EID = $1",
+      [staffEID]
+    );
+
+    if (staffCheck.rows.length === 0) {
+      return res.status(403).json({ error: "Unauthorized staff member" });
+    }
+
+    const staffDepartmentID = staffCheck.rows[0].departmentid;
+
+    // Step 2: Get the instructor data and verify the department
     const result = await pool.query(
       `SELECT e.*, i.DepartmentID
        FROM Employees e
        JOIN Instructors i ON e.EID = i.EID
-       WHERE e.EID = $1`,
-      [eid]
+       WHERE e.EID = $1 AND i.DepartmentID = $2`,
+      [eid, staffDepartmentID]
     );
-    if (result.rows.length === 0) return res.status(404).json({ error: "Instructor not found" });
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Instructor not found or not in your department" });
+    }
+
     res.json(result.rows[0]);
   } catch (error) {
+    console.error("Failed to fetch instructor data:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 // Add a new instructor
 app.post("/instructors", async (req, res) => {
   const { eid, hashpw, email, firstname, lastname, departmentid, staffEID } = req.body;
@@ -528,30 +704,50 @@ app.put("/instructors/:eid", async (req, res) => {
 
 // server.js
 
-// Get advisor data by EID
+// Get advisor data by EID (restricted by staff department)
 app.get("/advisors/:eid", async (req, res) => {
   const { eid } = req.params;
+  const staffEID = req.query.staffEID;
 
   try {
+    // Check the staff's department
+    const staffDepartment = await pool.query(
+      `SELECT DepartmentID FROM Staff WHERE EID = $1`,
+      [staffEID]
+    );
+
+    if (staffDepartment.rows.length === 0) {
+      return res.status(403).json({ error: "Unauthorized access" });
+    }
+
+    const departmentID = staffDepartment.rows[0].departmentid;
+
+    // Fetch advisor data only if they belong to the same department
     const result = await pool.query(
       `SELECT e.*, a.DepartmentID
        FROM Employees e
-       JOIN Advises a ON e.EID = a.EID
-       WHERE e.EID = $1`,
-      [eid]
+       JOIN Advisors a ON e.EID = a.EID
+       WHERE e.EID = $1 AND a.DepartmentID = $2`,
+      [eid, departmentID]
     );
-    if (result.rows.length === 0) return res.status(404).json({ error: "Advisor not found" });
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Advisor not found or unauthorized access" });
+    }
+
     res.json(result.rows[0]);
   } catch (error) {
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Add a new advisor
+
+// Add a new advisor (restricted by staff department)
 app.post("/advisors", async (req, res) => {
   const { eid, hashpw, email, firstname, lastname, departmentid, staffEID } = req.body;
 
   try {
+    // Verify that the staff and department match
     const staffCheck = await pool.query(
       `SELECT 1 FROM Staff WHERE EID = $1 AND DepartmentID = $2`,
       [staffEID, departmentid]
@@ -560,6 +756,7 @@ app.post("/advisors", async (req, res) => {
       return res.status(403).json({ error: "Unauthorized to add advisor for this department" });
     }
 
+    // Insert into Employees and Advisors tables
     await pool.query(
       `INSERT INTO Employees (EID, HashPW, Email, FirstName, LastName) VALUES ($1, $2, $3, $4, $5)`,
       [eid, hashpw, email, firstname, lastname]
@@ -579,12 +776,14 @@ app.post("/advisors", async (req, res) => {
   }
 });
 
-// Update advisor data
+
+// Update advisor data (restricted by staff department)
 app.put("/advisors/:eid", async (req, res) => {
   const { eid } = req.params;
   const { email, firstname, lastname, departmentid, staffEID } = req.body;
 
   try {
+    // Verify staff's department matches the advisor's department
     const staffCheck = await pool.query(
       `SELECT 1 FROM Staff WHERE EID = $1 AND DepartmentID = $2`,
       [staffEID, departmentid]
@@ -593,6 +792,7 @@ app.put("/advisors/:eid", async (req, res) => {
       return res.status(403).json({ error: "Unauthorized to update advisor for this department" });
     }
 
+    // Update Employees and Advises tables
     await pool.query(
       `UPDATE Employees SET Email = $1, FirstName = $2, LastName = $3 WHERE EID = $4`,
       [email, firstname, lastname, eid]
@@ -608,39 +808,75 @@ app.put("/advisors/:eid", async (req, res) => {
   }
 });
 
+
 // get course information
-// Get course data by CRN
+// Get course data by CRN (restricted to staff's department)
 app.get("/courses/:crn", async (req, res) => {
   const { crn } = req.params;
+  const { staffEID } = req.query;
 
   try {
-    // Query to get course information by CRN
+    // Get the department ID of the staff member
+    const staffResult = await pool.query(
+      "SELECT DepartmentID FROM Staff WHERE EID = $1",
+      [staffEID]
+    );
+
+    if (staffResult.rows.length === 0) {
+      return res.status(403).json({ error: "Unauthorized staff member" });
+    }
+
+    const staffDepartmentID = staffResult.rows[0].departmentid;
+
+    // Fetch the course data and check if it belongs to the staff's department
     const result = await pool.query(
       `SELECT crn, name, credits, departmentid, semester, year, starttime, endtime
-      FROM Courses
-      WHERE crn = $1;
-      `,
-      [crn]
+       FROM Courses
+       WHERE crn = $1 AND departmentid = $2`,
+      [crn, staffDepartmentID]
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Course not found" });
+      return res.status(404).json({ error: "Course not found or not in your department" });
     }
 
     res.json(result.rows[0]);
   } catch (error) {
-    console.error(error);
+    console.error("Failed to fetch course data:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Update course data by CRN
+
+// Update course data by CRN (restricted to staff's department)
 app.put("/courses/:crn", async (req, res) => {
   const { crn } = req.params;
-  const { name, credits, semester, year, starttime, endtime } = req.body;
+  const { name, credits, semester, year, starttime, endtime, staffEID } = req.body;
 
   try {
-    // Update the course data in the Courses table
+    // Get the department ID of the staff member
+    const staffResult = await pool.query(
+      "SELECT DepartmentID FROM Staff WHERE EID = $1",
+      [staffEID]
+    );
+
+    if (staffResult.rows.length === 0) {
+      return res.status(403).json({ error: "Unauthorized staff member" });
+    }
+
+    const staffDepartmentID = staffResult.rows[0].departmentid;
+
+    // Ensure the course belongs to the staff's department
+    const departmentCheck = await pool.query(
+      "SELECT 1 FROM Courses WHERE CRN = $1 AND DepartmentID = $2",
+      [crn, staffDepartmentID]
+    );
+
+    if (departmentCheck.rows.length === 0) {
+      return res.status(403).json({ error: "You are not authorized to edit this course" });
+    }
+
+    // Update the course data
     await pool.query(
       `UPDATE Courses
        SET Name = $1, Credits = $2, Semester = $3, Year = $4, StartTime = $5, EndTime = $6
@@ -650,12 +886,13 @@ app.put("/courses/:crn", async (req, res) => {
 
     res.json({ message: "Course updated successfully" });
   } catch (error) {
-    console.error(error);
+    console.error("Failed to update course data:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Add a new course
+
+// Add a new course (restricted to staff's department)
 app.post("/courses", async (req, res) => {
   const {
     crn,
@@ -665,17 +902,26 @@ app.post("/courses", async (req, res) => {
     semester,
     year,
     starttime,
-    endtime
+    endtime,
+    staffEID
   } = req.body;
 
   try {
-    // Check if the department exists
-    const departmentCheck = await pool.query(
-      `SELECT 1 FROM Departments WHERE DepartmentID = $1`,
-      [departmentid]
+    // Get the department ID of the staff member
+    const staffResult = await pool.query(
+      "SELECT DepartmentID FROM Staff WHERE EID = $1",
+      [staffEID]
     );
-    if (departmentCheck.rows.length === 0) {
-      return res.status(400).json({ error: "Department does not exist" });
+
+    if (staffResult.rows.length === 0) {
+      return res.status(403).json({ error: "Unauthorized staff member" });
+    }
+
+    const staffDepartmentID = staffResult.rows[0].departmentid;
+
+    // Ensure the new course belongs to the staff's department
+    if (departmentid !== staffDepartmentID) {
+      return res.status(403).json({ error: "You can only add courses to your own department" });
     }
 
     // Insert the new course into the Courses table
@@ -687,10 +933,11 @@ app.post("/courses", async (req, res) => {
 
     res.json({ message: "Course added successfully" });
   } catch (error) {
-    console.error(error);
+    console.error("Failed to add course:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 
 // Department -------------------------------

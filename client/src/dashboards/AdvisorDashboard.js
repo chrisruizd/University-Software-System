@@ -25,19 +25,26 @@ function AdvisorDashboard() {
   }, [email]);
 
   const fetchStudentCourses = async () => {
+    const advisorEID = advisorInfo.eid;
+  
     try {
-      const response = await api.get(`/student-courses/${studentUID}`);
+      const response = await api.get(`/student-courses/${studentUID}`, {
+        params: { advisorEID },
+      });
       setStudentCourses(response.data);
       setMessage('');
     } catch (error) {
-      setMessage('Failed to fetch student courses');
+      setMessage(error.response?.data?.error || 'Failed to fetch student courses');
     }
   };
+  
 
   const addCourseForStudent = async () => {
+    const advisorEID = advisorInfo.eid;
+  
     try {
       const response = await api.post(`/add-course`, {
-        advisorEID: advisorInfo.eid,
+        advisorEID,
         studentUID,
         crn: newCRN,
       });
@@ -47,11 +54,14 @@ function AdvisorDashboard() {
       setMessage(error.response?.data?.error || 'Failed to add course');
     }
   };
+  
 
   const dropCourseForStudent = async (crn) => {
+    const advisorEID = advisorInfo.eid;
+  
     try {
       const response = await api.post(`/drop-course`, {
-        advisorEID: advisorInfo.eid,
+        advisorEID,
         studentUID,
         crn,
       });
@@ -61,6 +71,7 @@ function AdvisorDashboard() {
       setMessage(error.response?.data?.error || 'Failed to drop course');
     }
   };
+  
 
   const handleLogout = () => {
     localStorage.clear();
@@ -86,7 +97,7 @@ function AdvisorDashboard() {
             <ul className="list-unstyled mt-3">
               <li><strong>EID:</strong> {advisorInfo.eid}</li>
               <li><strong>Email:</strong> {advisorInfo.email}</li>
-              <li><strong>Department:</strong> {advisorInfo.department}</li>
+              <li><strong>Department:</strong> {advisorInfo.departmentid}</li>
             </ul>
           </div>
           <button className="btn btn-danger w-100 mt-3" onClick={handleLogout}>

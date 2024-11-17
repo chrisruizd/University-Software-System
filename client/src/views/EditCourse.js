@@ -35,8 +35,11 @@ function EditCourse() {
 
 
   const fetchCourseData = async () => {
+    const staffEID = localStorage.getItem('userEID');
     try {
-      const response = await api.get(`/courses/${crn.toString()}`);
+      const response = await api.get(`/courses/${crn}`, {
+        params: { staffEID },
+      });
       const data = response.data;
       // Format startTime and endTime
       data.startTime = formatTime(data.starttime);
@@ -44,9 +47,10 @@ function EditCourse() {
       setCourseData(data);
       setMessage('');
     } catch (error) {
-      setMessage('Failed to fetch course data');
+      setMessage(error.response?.data?.error || 'Failed to fetch course data');
     }
   };
+  
   
   
 
@@ -62,11 +66,11 @@ function EditCourse() {
     setNewCourse({ ...newCourse, [name]: value });
   };
 
-  // Submit new course data
   const submitNewCourse = async (e) => {
     e.preventDefault();
+    const staffEID = localStorage.getItem('userEID');
     try {
-      const response = await api.post('/courses', newCourse);
+      const response = await api.post('/courses', { ...newCourse, staffEID });
       setMessage(response.data.message);
       setShowAddForm(false);
       setNewCourse({
@@ -84,6 +88,7 @@ function EditCourse() {
       setMessage(error.response?.data?.error || 'Failed to add course');
     }
   };
+  
 
   // Handle input changes for updating course data
   const handleInputUpdate = (e) => {
@@ -93,13 +98,18 @@ function EditCourse() {
 
   // Submit updated course data
   const updateCourseData = async () => {
+    const staffEID = localStorage.getItem('userEID');
     try {
-      const response = await api.put(`/courses/${crn}`, courseData);
+      const response = await api.put(`/courses/${crn}`, {
+        ...courseData,
+        staffEID,
+      });
       setMessage(response.data.message);
     } catch (error) {
       setMessage(error.response?.data?.error || 'Failed to update course');
     }
   };
+  
 
   return (
     <div className="container mt-4">
@@ -173,10 +183,11 @@ function EditCourse() {
                   type="text"
                   name="departmentid"
                   className="form-control"
-                  value={courseData.departmentid}
-                  onChange={handleInputUpdate}
+                  value={courseData?.departmentid || localStorage.getItem('departmentID')}
+                  readOnly
                 />
               </div>
+
 
               <div className="mb-3">
                 <label>Days:</label>

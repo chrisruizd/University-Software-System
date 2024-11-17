@@ -20,15 +20,21 @@ function EditInstructor() {
 
   const navigate = useNavigate();
 
+  // get instructor data
   const fetchInstructorData = async () => {
+    const staffEID = localStorage.getItem('userEID'); // Retrieve the staff EID from localStorage
+  
     try {
-      const response = await api.get(`/instructors/${instructorEID}`);
+      const response = await api.get(`/instructors/${instructorEID}`, {
+        params: { staffEID },
+      });
       setInstructorData(response.data);
       setMessage('');
     } catch (error) {
-      setMessage('Failed to fetch instructor data');
+      setMessage(error.response?.data?.error || 'Failed to fetch instructor data');
     }
   };
+  
 
   const toggleAddInstructorForm = () => {
     setShowAddForm(!showAddForm);
