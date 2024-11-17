@@ -239,10 +239,9 @@ app.get("/student-courses/:uid", async (req, res) => {
     const departmentCheck = await pool.query(
       `SELECT 1
        FROM Advisors a
-       JOIN Advises adv ON a.EID = adv.EID
        JOIN Students s ON s.UID = $1
        JOIN Majors m ON s.MajorIn = m.Name
-       WHERE a.EID = $2 AND m.DepartmentID = adv.DepartmentID`,
+       WHERE a.EID = $2 AND a.DepartmentID = m.DepartmentID`,
       [uid, advisorEID]
     );
 
@@ -250,7 +249,7 @@ app.get("/student-courses/:uid", async (req, res) => {
       return res.status(403).json({ error: "Advisor not authorized to view courses for this student" });
     }
 
-    // Query to get the student's enrolled courses
+    // Get the student's enrolled courses
     const coursesResult = await pool.query(
       `SELECT c.Name, c.CRN, c.Credits, c.Semester, c.Year, e.Grade, e.Completed
        FROM Enrolled_In e
@@ -261,9 +260,12 @@ app.get("/student-courses/:uid", async (req, res) => {
 
     res.json(coursesResult.rows);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+
 
 
 app.post("/add-course", async (req, res) => {
@@ -274,10 +276,9 @@ app.post("/add-course", async (req, res) => {
     const departmentCheck = await pool.query(
       `SELECT 1
        FROM Advisors a
-       JOIN Advises adv ON a.EID = adv.EID
        JOIN Students s ON s.UID = $1
        JOIN Majors m ON s.MajorIn = m.Name
-       WHERE a.EID = $2 AND m.DepartmentID = adv.DepartmentID`,
+       WHERE a.EID = $2 AND a.DepartmentID = m.DepartmentID`,
       [studentUID, advisorEID]
     );
 
@@ -304,9 +305,12 @@ app.post("/add-course", async (req, res) => {
 
     res.json({ message: "Course added successfully" });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+
 
 
 
@@ -320,10 +324,9 @@ app.post("/drop-course", async (req, res) => {
     const departmentCheck = await pool.query(
       `SELECT 1
        FROM Advisors a
-       JOIN Advises adv ON a.EID = adv.EID
        JOIN Students s ON s.UID = $1
        JOIN Majors m ON s.MajorIn = m.Name
-       WHERE a.EID = $2 AND m.DepartmentID = adv.DepartmentID`,
+       WHERE a.EID = $2 AND a.DepartmentID = m.DepartmentID`,
       [studentUID, advisorEID]
     );
 
@@ -349,9 +352,12 @@ app.post("/drop-course", async (req, res) => {
 
     res.json({ message: "Course dropped successfully" });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+
 
 
 
