@@ -704,6 +704,7 @@ app.put("/instructors/:eid", async (req, res) => {
 });
 
 // Add a course for an instructor
+// Add a course for an instructor
 app.post("/assign-course", async (req, res) => {
   const { instructorEID, crn, staffEID } = req.body;
 
@@ -720,16 +721,20 @@ app.post("/assign-course", async (req, res) => {
 
     const staffDepartmentID = staffDeptResult.rows[0].departmentid;
 
+    // Verify the instructor belongs to the staff's department
     const instructorDeptResult = await pool.query(
       `SELECT DepartmentID FROM Instructors WHERE EID = $1`,
       [instructorEID]
     );
 
-    if (instructorDeptResult.rows.length === 0 || instructorDeptResult.rows[0].departmentid !== staffDepartmentID) {
+    if (
+      instructorDeptResult.rows.length === 0 ||
+      instructorDeptResult.rows[0].departmentid !== staffDepartmentID
+    ) {
       return res.status(403).json({ error: "Instructor does not belong to your department" });
     }
 
-    // Verify course belongs to the same department
+    // Verify the course belongs to the staff's department
     const courseCheck = await pool.query(
       `SELECT 1 FROM Courses WHERE CRN = $1 AND DepartmentID = $2`,
       [crn, staffDepartmentID]
@@ -739,7 +744,19 @@ app.post("/assign-course", async (req, res) => {
       return res.status(400).json({ error: "Course does not belong to your department or does not exist" });
     }
 
-    // Insert into teaches table
+    // Check if the course is already assigned to another instructor
+    const assignmentCheck = await pool.query(
+      `SELECT EID FROM Teaches WHERE CRN = $1`,
+      [crn]
+    );
+
+    if (assignmentCheck.rows.length > 0) {
+      return res
+        .status(400)
+        .json({ error: "Course is already assigned to another instructor" });
+    }
+
+    // Assign the course to the instructor
     await pool.query(
       `INSERT INTO Teaches (EID, CRN) VALUES ($1, $2)`,
       [instructorEID, crn]
@@ -748,9 +765,10 @@ app.post("/assign-course", async (req, res) => {
     res.json({ message: "Course assigned to instructor successfully" });
   } catch (error) {
     console.error("Failed to assign course:", error);
-    res.status(500).json({ error: "Course does not exist or has already been assigned" });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 
 
