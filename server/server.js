@@ -239,10 +239,9 @@ app.get("/student-courses/:uid", async (req, res) => {
     const departmentCheck = await pool.query(
       `SELECT 1
        FROM Advisors a
-       JOIN Advises adv ON a.EID = adv.EID
        JOIN Students s ON s.UID = $1
        JOIN Majors m ON s.MajorIn = m.Name
-       WHERE a.EID = $2 AND m.DepartmentID = adv.DepartmentID`,
+       WHERE a.EID = $2 AND a.DepartmentID = m.DepartmentID`,
       [uid, advisorEID]
     );
 
@@ -250,7 +249,7 @@ app.get("/student-courses/:uid", async (req, res) => {
       return res.status(403).json({ error: "Advisor not authorized to view courses for this student" });
     }
 
-    // Query to get the student's enrolled courses
+    // Get the student's enrolled courses
     const coursesResult = await pool.query(
       `SELECT c.Name, c.CRN, c.Credits, c.Semester, c.Year, e.Grade, e.Completed
        FROM Enrolled_In e
@@ -261,9 +260,12 @@ app.get("/student-courses/:uid", async (req, res) => {
 
     res.json(coursesResult.rows);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+
 
 
 app.post("/add-course", async (req, res) => {
@@ -274,10 +276,9 @@ app.post("/add-course", async (req, res) => {
     const departmentCheck = await pool.query(
       `SELECT 1
        FROM Advisors a
-       JOIN Advises adv ON a.EID = adv.EID
        JOIN Students s ON s.UID = $1
        JOIN Majors m ON s.MajorIn = m.Name
-       WHERE a.EID = $2 AND m.DepartmentID = adv.DepartmentID`,
+       WHERE a.EID = $2 AND a.DepartmentID = m.DepartmentID`,
       [studentUID, advisorEID]
     );
 
@@ -304,9 +305,12 @@ app.post("/add-course", async (req, res) => {
 
     res.json({ message: "Course added successfully" });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+
 
 
 
@@ -320,10 +324,9 @@ app.post("/drop-course", async (req, res) => {
     const departmentCheck = await pool.query(
       `SELECT 1
        FROM Advisors a
-       JOIN Advises adv ON a.EID = adv.EID
        JOIN Students s ON s.UID = $1
        JOIN Majors m ON s.MajorIn = m.Name
-       WHERE a.EID = $2 AND m.DepartmentID = adv.DepartmentID`,
+       WHERE a.EID = $2 AND a.DepartmentID = m.DepartmentID`,
       [studentUID, advisorEID]
     );
 
@@ -349,9 +352,12 @@ app.post("/drop-course", async (req, res) => {
 
     res.json({ message: "Course dropped successfully" });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+
 
 
 
@@ -696,6 +702,74 @@ app.put("/instructors/:eid", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// Add a course for an instructor
+// Add a course for an instructor
+app.post("/assign-course", async (req, res) => {
+  const { instructorEID, crn, staffEID } = req.body;
+
+  try {
+    // Verify staff's department matches the instructor's department
+    const staffDeptResult = await pool.query(
+      `SELECT DepartmentID FROM Staff WHERE EID = $1`,
+      [staffEID]
+    );
+
+    if (staffDeptResult.rows.length === 0) {
+      return res.status(403).json({ error: "Unauthorized staff member" });
+    }
+
+    const staffDepartmentID = staffDeptResult.rows[0].departmentid;
+
+    // Verify the instructor belongs to the staff's department
+    const instructorDeptResult = await pool.query(
+      `SELECT DepartmentID FROM Instructors WHERE EID = $1`,
+      [instructorEID]
+    );
+
+    if (
+      instructorDeptResult.rows.length === 0 ||
+      instructorDeptResult.rows[0].departmentid !== staffDepartmentID
+    ) {
+      return res.status(403).json({ error: "Instructor does not belong to your department" });
+    }
+
+    // Verify the course belongs to the staff's department
+    const courseCheck = await pool.query(
+      `SELECT 1 FROM Courses WHERE CRN = $1 AND DepartmentID = $2`,
+      [crn, staffDepartmentID]
+    );
+
+    if (courseCheck.rows.length === 0) {
+      return res.status(400).json({ error: "Course does not belong to your department or does not exist" });
+    }
+
+    // Check if the course is already assigned to another instructor
+    const assignmentCheck = await pool.query(
+      `SELECT EID FROM Teaches WHERE CRN = $1`,
+      [crn]
+    );
+
+    if (assignmentCheck.rows.length > 0) {
+      return res
+        .status(400)
+        .json({ error: "Course is already assigned to another instructor" });
+    }
+
+    // Assign the course to the instructor
+    await pool.query(
+      `INSERT INTO Teaches (EID, CRN) VALUES ($1, $2)`,
+      [instructorEID, crn]
+    );
+
+    res.json({ message: "Course assigned to instructor successfully" });
+  } catch (error) {
+    console.error("Failed to assign course:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
 
 
 
@@ -1107,6 +1181,79 @@ app.get("/api/course-enrollments", async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     console.error("Failed to fetch course enrollments data:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+// Add a new major to the staff's department
+app.post("/add-major", async (req, res) => {
+  const { staffEID, name } = req.body;
+
+  try {
+    // Get the department ID of the staff member
+    const staffResult = await pool.query(
+      "SELECT DepartmentID FROM Staff WHERE EID = $1",
+      [staffEID]
+    );
+
+    if (staffResult.rows.length === 0) {
+      return res.status(404).json({ error: "Staff not found" });
+    }
+
+    const departmentID = staffResult.rows[0].departmentid;
+
+    // Check if the major already exists for this department
+    const majorCheck = await pool.query(
+      "SELECT 1 FROM Majors WHERE Name = $1 AND DepartmentID = $2",
+      [name, departmentID]
+    );
+
+    if (majorCheck.rows.length > 0) {
+      return res
+        .status(400)
+        .json({ error: "Major already exists in this department" });
+    }
+
+    // Insert the new major into the Majors table
+    await pool.query(
+      "INSERT INTO Majors (Name, DepartmentID) VALUES ($1, $2)",
+      [name, departmentID]
+    );
+
+    res.json({ message: "Major added successfully" });
+  } catch (error) {
+    console.error("Failed to add major:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get all majors in the staff's department
+app.get("/majors", async (req, res) => {
+  const { staffEID } = req.query;
+
+  try {
+    // Get the department ID of the staff member
+    const staffResult = await pool.query(
+      "SELECT DepartmentID FROM Staff WHERE EID = $1",
+      [staffEID]
+    );
+
+    if (staffResult.rows.length === 0) {
+      return res.status(404).json({ error: "Staff not found" });
+    }
+
+    const departmentID = staffResult.rows[0].departmentid;
+
+    // Fetch all majors associated with this department
+    const majorsResult = await pool.query(
+      "SELECT Name FROM Majors WHERE DepartmentID = $1",
+      [departmentID]
+    );
+
+    res.json(majorsResult.rows);
+  } catch (error) {
+    console.error("Failed to fetch majors:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
