@@ -41,4 +41,5 @@ Connect Node.js to PostgreSQL:
     https://www.youtube.com/watch?v=_n-Ai30C1qs  
 
 
-Figma Link: https://www.figma.com/design/qsoTAljN27fIzX6sLbsOpf/Software-Engineering?node-id=0-1&node-type=canvas&t=5mjTXemWj7kRnKsl-0
+- Figma Link: https://www.figma.com/design/qsoTAljN27fIzX6sLbsOpf/Software-Engineering?node-id=0-1&node-type=canvas&t=5mjTXemWj7kRnKsl-0
+- Database: /uniview.sql
